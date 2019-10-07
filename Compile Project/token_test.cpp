@@ -5,25 +5,24 @@
 using namespace std;
 
 int token_test() {
+	Tokenizer tokenizer("testfile.txt");
 	ofstream outFile("output.txt");
-	ifstream inFile("testfile.txt");
-	reservedWords_init();
-	read_char(inFile);
+
 	while (true) {
-		struct token this_token = next_token(inFile);
-		switch (this_token.symbol)
+		Token this_token = tokenizer.next_token();
+		switch (this_token.getType())
 		{
 		case IDENFR:
-			outFile << "IDENFR" << " " << *(this_token.string) << endl;
+			outFile << "IDENFR" << " " << (this_token.getStr()) << endl;
 			break;
 		case INTCON:
-			outFile << "INTCON" << " " << this_token.number << endl;
+			outFile << "INTCON" << " " << this_token.getNum() << endl;
 			break;
 		case CHARCON:
-			outFile << "CHARCON" << " " << this_token.c << endl;
+			outFile << "CHARCON" << " " << char(this_token.getNum()) << endl;
 			break;
 		case STRCON:
-			outFile << "STRCON" << " " << *(this_token.string) << endl;
+			outFile << "STRCON" << " " << (this_token.getStr()) << endl;
 			break;
 		case CONSTTK:
 			outFile << "CONSTTK const" << endl;
@@ -124,10 +123,8 @@ int token_test() {
 		default:
 			break;
 		}
-		if (this_token.symbol == EOF) {
-			inFile.close();
+		if (this_token.getType() == ENDFILE) {
 			outFile.close();
-			return 0;
 			return 0;
 		}
 	}

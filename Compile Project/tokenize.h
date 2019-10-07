@@ -1,7 +1,129 @@
+﻿/*
+	Tokenizer
+*/
+
 #pragma once
 #include<string>
-
+#include<fstream>
+#include<iostream>
+#include<map>
 using namespace std;
+
+enum Symbol
+{
+	ILLEGAL,		// Illegal token
+	ENDFILE,		// EOF
+	IDENFR,
+	INTCON,
+	CHARCON,
+	STRCON,
+	CONSTTK,
+	INTTK,
+	VOIDTK,
+	MAINTK,
+	IFTK,
+	ELSETK,
+	DOTK,
+	WHILETK,
+	FORTK,
+	SCANFTK,
+	PRINTFTK,
+	RETURNTK,
+	PLUS,
+	MINU,
+	MULT,
+	DIV,
+	LSS,
+	LEQ,
+	GRE,
+	GEQ,
+	EQL,
+	NEQ,
+	ASSIGN,
+	SEMICN,
+	COMMA,
+	LPARENT,
+	RPARENT,
+	LBRACK,
+	RBRACK,
+	LBRACE,
+	RBRACE,
+	CHARTK
+};
+
+class Token {
+private:
+	Symbol type;
+	int number;
+	string str;
+
+public:
+	Token(Symbol _type, int _number, string _str) {
+		this->type = _type;
+		this->number = _number;
+		this->str = _str;
+	}
+	Token() {
+		this->type = ILLEGAL;
+		this->number = 0;
+		this->str = "";
+	}
+	void setType(Symbol _type) {
+		this->type = _type;
+	}
+	void setNumber(int _number) {
+		this->number = _number;
+	}
+	void setStr(string _str) {
+		this->str = _str;
+	}
+	Symbol getType() {
+		return type;
+	}
+	int getNum() {
+		return number;
+	}
+	string getStr() {
+		return str;
+	}
+};
+
+class Tokenizer {
+public:
+	Tokenizer(string filename);
+	Token next_token();
+
+private:
+	char ch;
+	ifstream inFile;
+	map<string, Symbol> reservedWords;
+	void read_char();
+	int read_number();
+	void un_read_char(char c);
+	bool isLetter_General(char c);
+	bool isLetter_Special(char c);
+	Symbol reservedWords_lookup(string token);
+};
+
+
+
+/*
+
+struct token {
+	int symbol;
+	int	number;
+	char c;
+	string* string;
+};
+
+int isLetter_General(char c);
+int isLetter_Special(char c);
+int read_number(ifstream& inFile);
+void read_char(ifstream& inFile);
+void un_read_char(char c, ifstream& inFile);
+int reservedWords_lookup(string token);
+void reservedWords_init();
+struct token next_token(ifstream& inFile);
 
 #define IDENFR 38
 #define INTCON 1
@@ -40,18 +162,4 @@ using namespace std;
 #define RBRACE 34
 #define CHARTK 35
 
-struct token {
-	int symbol;
-	int	number;
-	char c;
-	string* string;
-};
-
-int isLetter_General(char c);
-int isLetter_Special(char c);
-int read_number(ifstream& inFile);
-void read_char(ifstream& inFile);
-void un_read_char(char c, ifstream& inFile);
-int reservedWords_lookup(string token);
-void reservedWords_init();
-struct token next_token(ifstream& inFile);
+*/
