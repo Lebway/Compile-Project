@@ -39,8 +39,7 @@ Token Tokenizer::next_token() {
 			reservedWords_lookup(str),
 			0, str
 		);
-	}
-	else if (isdigit(ch)) {
+	} else if (isdigit(ch)) {
 		return Token(
 			INTCON,
 			read_number(),
