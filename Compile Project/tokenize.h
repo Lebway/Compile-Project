@@ -6,6 +6,7 @@
 #include<iostream>
 #include<map>
 #include"token.h"
+#include<list>
 
 using namespace std;
 
@@ -13,6 +14,7 @@ class Tokenizer {
 public:
 	Tokenizer(string filename);
 	Token next_token();
+	list<Token> getTokenlist();
 
 private:
 	char ch;

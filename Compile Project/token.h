@@ -1,4 +1,4 @@
-#ifndef TOKEN_H
+﻿#ifndef TOKEN_H
 #define TOKEN_H
 
 #include<string>
@@ -64,6 +64,7 @@ public:
 	Symbol getType();
 	int getNum();
 	string getStr();
+	string toStr();
 };
 
 

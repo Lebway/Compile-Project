@@ -4,6 +4,7 @@
 #include<map>
 #include<iostream>
 #include<ctype.h>
+#include<list>
 
 using namespace std;
 
@@ -98,7 +99,7 @@ Token Tokenizer::next_token() {
 				// TODO: raise error
 			}
 			break;
-		case '\'':				// TODO: 这里是否考虑转义字符?
+		case '\'':
 			read_char();
 			newtoken.setNumber(ch);
 			read_char();
@@ -170,3 +171,17 @@ Symbol Tokenizer::reservedWords_lookup(string strIn) {
 		return iter->second;
 	}
 }
+
+list<Token> Tokenizer::getTokenlist() {
+	// You should init the tokenizer before call the getTokenlist
+	list<Token> tokenlist;
+	while (true) {
+		Token newToken = this->next_token();
+		if (newToken.getType() == ENDFILE) break;
+		else {
+			tokenlist.push_back(newToken);
+		}
+	}
+	return tokenlist;
+}
+
