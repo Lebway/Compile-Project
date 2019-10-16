@@ -41,9 +41,19 @@ enum GrammarValue
 	NO_RETURN_CALL_STATEMENT,
 
 	MAIN_FUNCTION,
+	HEAD_STATE,
 
-	ILLEGAL,
-	END_NODE,
+	RETURN_FUNCTION,
+	NO_RETURN_FUNCTION,
+
+	VALUE_PARAMETER_TABLE,
+	PARAMETER_TABLE,
+
+	PROGRAM,
+	COMPOSITE_STATEMENT,
+
+	ILLEGAL_GRAMMAR,
+	END_NODE_GRAMMAR,
 };
 
 class GrammarNode {
@@ -53,6 +63,8 @@ public:
 	GrammarNode(NodeType _node_type, GrammarValue _grammar_value);
 	void addChild(GrammarNode* child);
 	string toStr();
+	NodeType getType();
+	list<GrammarNode*> getChildList();
 private:
 	NodeType node_type;
 	Token token;

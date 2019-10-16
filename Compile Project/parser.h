@@ -4,16 +4,22 @@
 #include"tokenize.h"
 #include"grammarNode.h"
 #include<list>
+#include<iostream>
+#include<fstream>
+
 using namespace std;
 
 class Parser {
 public:
 	Parser(list<Token>);
+	void printWholeTree(string _out_file_string);
 
 private:
 	list<Token> tokenlist;
 	list<Token>::iterator iter;
 	GrammarNode root;
+	map<string, GrammarValue> funcMap;	// TODO: too Ugly!
+	ofstream outFile;
 	
 	void appendEnd(GrammarNode* father);
 	void appendEnd(GrammarNode* father, Symbol token_type);
@@ -46,11 +52,25 @@ private:
 	void noReturnCallStatementParser(GrammarNode* father);
 
 	void mainFunctionParser(GrammarNode* father);
+	void headStateParser(GrammarNode* father);
+
+	void returnFunctionParser(GrammarNode* father);
+	void noReturnFunctionParser(GrammarNode* father);
+
+	void valueParameterTableParser(GrammarNode* father);
+	void parameterTableParser(GrammarNode* father);
 
 	void scanfStatementParser(GrammarNode* father);
 	void printfStatementParser(GrammarNode* father);
 	void returnStatementParser(GrammarNode* father);
+
+	void compositeStatementParser(GrammarNode* father);
+	void programParser(GrammarNode* father);
+
+	void printTree(GrammarNode* father);
 };
+
+bool isRelationOperator(Symbol op);
 
 #endif // !PARSER__H
 
