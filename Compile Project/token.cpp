@@ -169,4 +169,5 @@ string Token::toStr() {
 	default:
 		break;
 	}
+	return "";
 }

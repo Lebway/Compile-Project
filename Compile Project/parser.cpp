@@ -7,7 +7,6 @@ Parser::Parser(list<Token> _tokenlist) {
 	this->iter = this->tokenlist.begin();
 	this->root = GrammarNode(MID_NODE, PROGRAM);
 	programParser(&(this->root));
-	// TODO: switch case?
 }
 
 void Parser::appendEnd(GrammarNode* father) {
@@ -19,8 +18,7 @@ void Parser::appendEnd(GrammarNode* father) {
 void Parser::appendEnd(GrammarNode* father, Symbol token_type) {
 	if ((*iter).getType() != token_type) {
 		// TODO: raise error
-		cout << (*iter).toStr() << endl;
-		cout << "[DEBUG] got wrong token here" << endl;
+		cout << "[DEBUG] get unexpected token " << (*iter).toStr() << endl;
 	}
 	appendEnd(father);
 }
@@ -31,8 +29,6 @@ GrammarNode* Parser::appendMidNode(GrammarNode* father, GrammarValue _grammar_va
 	return thisNode;
 }
 
-
-
 /******** Parser ********/
 
 // 常量说明
@@ -41,7 +37,7 @@ void Parser::constDeclareParser(GrammarNode* father) {
 		appendEnd(father, CONSTTK);
 		GrammarNode* thisNode = appendMidNode(father, CONST_DEFINE);
 		constDefineParser(thisNode);
-		appendEnd(father, SEMICN);	// ;
+		appendEnd(father, SEMICN);
 	}
 }
 
@@ -49,7 +45,7 @@ void Parser::constDeclareParser(GrammarNode* father) {
 void Parser::constDefineParser(GrammarNode* father) {
 	if ((*iter).getType() == CHARTK) {		// char
 		appendEnd(father, CHARTK);
-		identifierParser(father);			// 同级，不建树
+		identifierParser(father);
 		appendEnd(father, ASSIGN);
 		appendEnd(father, CHARCON);
 		while ((*iter).getType() == COMMA) {
@@ -67,7 +63,6 @@ void Parser::constDefineParser(GrammarNode* father) {
 			integerParser(thisNode);
 		}
 		while ((*iter).getType() == COMMA) {
-			// appendEnd(father, INTTK);
 			appendEnd(father, COMMA);
 			identifierParser(father);
 			appendEnd(father, ASSIGN);
@@ -92,14 +87,14 @@ void Parser::variableDeclareParser(GrammarNode* father) {
 
 	while ((*iter).getType() == INTTK || (*iter).getType() == CHARTK) {
 		iter++; iter++;
-		if ((*iter).getType() == LPARENT) {
+		if ((*iter).getType() == LPARENT) {		// is a function
 			iter--; iter--;
 			return;
 		} else {
 			iter--; iter--;
 		}
-		GrammarNode* newNode = appendMidNode(father, VARIABLE_DEFINE);
-		variableDefineParser(newNode);
+		GrammarNode* thisNode = appendMidNode(father, VARIABLE_DEFINE);
+		variableDefineParser(thisNode);
 		appendEnd(father, SEMICN);
 	}
 }
@@ -171,9 +166,6 @@ void Parser::factorParser(GrammarNode* father) {
 	} else if ((*iter).getType() == PLUS || (*iter).getType() == MINU || (*iter).getType() == INTCON) {
 		GrammarNode* thisNode = appendMidNode(father, INTEGER);
 		integerParser(thisNode);
-	} else if ((*iter).getType() == INTTK || (*iter).getType() == CHARTK) {
-		GrammarNode* thisNode = appendMidNode(father, RETURN_CALL_STATEMENT);
-		returnCallStatementParser(thisNode);
 	} else {		// ＜标识符＞｜＜标识符＞'['＜表达式＞']'
 		auto find_func = funcMap.find((*iter).getStr());
 		if (find_func == funcMap.end()) {
@@ -208,7 +200,7 @@ void Parser::integerParser(GrammarNode* father) {
 
 // 无符号整数
 void Parser::unsignIntParser(GrammarNode* father) {
-	// TODO: 如果不符合无符号整数的条件，则报错
+	// TODO: raiser error when not a legal Unsigned Int
 	appendEnd(father, INTCON);
 }
 
@@ -369,7 +361,7 @@ void Parser::printfStatementParser(GrammarNode* father) {
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
 			expressionParser(thisNode);
 		}
-	} else {	
+	} else {
 		GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
 		expressionParser(thisNode);
 	}
@@ -478,22 +470,20 @@ void Parser::parameterTableParser(GrammarNode* father) {
 	// 如果下一个token是右括号，则可以直接返回
 	if ((*iter).getType() == RPARENT) return;
 	else {
-		{
+		if ((*iter).getType() == CHARTK) appendEnd(father, CHARTK);
+		else if ((*iter).getType() == INTTK) appendEnd(father, INTTK);
+		else {
+			// TODO: raise error
+		}
+		identifierParser(father);
+		while ((*iter).getType() == COMMA) {
+			appendEnd(father, COMMA);
 			if ((*iter).getType() == CHARTK) appendEnd(father, CHARTK);
 			else if ((*iter).getType() == INTTK) appendEnd(father, INTTK);
 			else {
 				// TODO: raise error
 			}
 			identifierParser(father);
-			while ((*iter).getType() == COMMA) {
-				appendEnd(father, COMMA);
-				if ((*iter).getType() == CHARTK) appendEnd(father, CHARTK);
-				else if ((*iter).getType() == INTTK) appendEnd(father, INTTK);
-				else {
-					// TODO: raise error
-				}
-				identifierParser(father);
-			}
 		}
 	}
 }
@@ -553,22 +543,22 @@ void Parser::statementParser(GrammarNode* father) {
 		{
 			GrammarNode* thisNode = appendMidNode(father, SCANF_STATEMENT);
 			scanfStatementParser(thisNode);
-			appendEnd(father, SEMICN);
 		}
+		appendEnd(father, SEMICN);
 		break;
 	case(PRINTFTK):
 		{
 			GrammarNode* thisNode = appendMidNode(father, PRINTF_STATEMENT);
 			printfStatementParser(thisNode);
-			appendEnd(father, SEMICN);
 		}
+		appendEnd(father, SEMICN);
 		break;
 	case(RETURNTK):
 		{
 			GrammarNode* thisNode = appendMidNode(father, RETURN_STATEMENT);
 			returnStatementParser(thisNode);	
-			appendEnd(father, SEMICN);
 		}
+		appendEnd(father, SEMICN);
 		break;
 	default:
 		auto find_func = funcMap.find((*iter).getStr());
@@ -716,7 +706,3 @@ bool isRelationOperator(Symbol op) {
 		return false;
 	}
 }
-
-
-
-
