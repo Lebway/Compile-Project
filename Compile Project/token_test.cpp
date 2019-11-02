@@ -1,10 +1,11 @@
-﻿#include"tokenize.h"
+#include"tokenize.h"
 #include<iostream>
 #include<fstream>
 
 using namespace std;
-
+/*
 int token_test() {
+	Er
 	Tokenizer tokenizer("testfile.txt");
 	ofstream outFile("output.txt");
 
@@ -130,3 +131,4 @@ int token_test() {
 	}
 	return 0;
 }
+*/

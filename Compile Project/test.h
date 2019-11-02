@@ -1,4 +1,4 @@
-﻿#ifndef TEST__H
+#ifndef TEST__H
 #define TEST__H
 
 int token_test();

@@ -1,4 +1,4 @@
-﻿#include "token.h"
+#include "token.h"
 #include<string>
 #include<fstream>
 #include<iostream>
@@ -6,16 +6,18 @@
 
 using namespace std;
 
-Token::Token(Symbol _type, int _number, string _str) {
+Token::Token(Symbol _type, int _number, string _str, int _lineNum) {
 	this->type = _type;
 	this->number = _number;
 	this->str = _str;
+	this->lineNum = _lineNum;
 }
 
 Token::Token() {
 	this->type = ILLEGAL;
 	this->number = 0;
 	this->str = "";
+	this->lineNum = -1;
 }
 
 void Token::setType(Symbol _type) {
@@ -30,12 +32,20 @@ void Token::setStr(string _str) {
 	this->str = _str;
 }
 
+void Token::setLineNum(int _line_num) {
+	this->lineNum = _line_num;
+}
+
 Symbol Token::getType() {
 	return type;
 }
 
 int Token::getNum() {
 	return number;
+}
+
+int Token::getLineNum() {
+	return this->lineNum;
 }
 
 string Token::getStr() {

@@ -1,4 +1,4 @@
-﻿#ifndef TOKENIZE_H
+#ifndef TOKENIZE_H
 #define TOKENIZE_H
 
 #include<string>
@@ -7,24 +7,33 @@
 #include<map>
 #include"token.h"
 #include<list>
+#include"error_handler.h"
+#include<string>
 
 using namespace std;
 
 class Tokenizer {
 public:
-	Tokenizer(string filename);
+	Tokenizer();
+	Tokenizer(string filename, Error_handler* _error_handler);
+	// TODO: 问题，c++的参数引用传递和参数指针传递?
 	Token next_token();
 	list<Token> getTokenlist();
 
 private:
 	char ch;
+	int lineNum;
 	ifstream inFile;
 	map<string, Symbol> reservedWords;
+	Error_handler* error_handler;
+
 	void read_char();
 	int read_number();
 	void un_read_char(char c);
 	bool isLetter_General(char c);
 	bool isLetter_Special(char c);
+	bool isWrongLetter(char c);
+	bool isWrongStrLetter(char c);
 	Symbol reservedWords_lookup(string token);
 };
 

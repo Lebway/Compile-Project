@@ -1,4 +1,5 @@
-﻿#include"tokenize.h"
+#include"tokenize.h"
+#include"error_handler.h"
 #include<fstream>
 #include<string>
 #include<map>
@@ -8,7 +9,27 @@
 
 using namespace std;
 
-Tokenizer::Tokenizer(string filename) {
+Tokenizer::Tokenizer() {
+	reservedWords.insert(pair<string, Symbol>("const", CONSTTK));
+	reservedWords.insert(pair<string, Symbol>("int", INTTK));
+	reservedWords.insert(pair<string, Symbol>("char", CHARTK));
+	reservedWords.insert(pair<string, Symbol>("void", VOIDTK));
+	reservedWords.insert(pair<string, Symbol>("main", MAINTK));
+	reservedWords.insert(pair<string, Symbol>("if", IFTK));
+	reservedWords.insert(pair<string, Symbol>("else", ELSETK));
+	reservedWords.insert(pair<string, Symbol>("do", DOTK));
+	reservedWords.insert(pair<string, Symbol>("while", WHILETK));
+	reservedWords.insert(pair<string, Symbol>("for", FORTK));
+	reservedWords.insert(pair<string, Symbol>("scanf", SCANFTK));
+	reservedWords.insert(pair<string, Symbol>("printf", PRINTFTK));
+	reservedWords.insert(pair<string, Symbol>("return", RETURNTK));
+	read_char();
+	this->lineNum = 1;
+
+}
+
+
+Tokenizer::Tokenizer(string filename, Error_handler* _error_handler) {
 	ch = 0; 
 	inFile.open(filename);
 	reservedWords.insert(pair<string, Symbol>("const", CONSTTK));
@@ -25,12 +46,21 @@ Tokenizer::Tokenizer(string filename) {
 	reservedWords.insert(pair<string, Symbol>("printf", PRINTFTK));
 	reservedWords.insert(pair<string, Symbol>("return", RETURNTK));
 	read_char();
+
+	this->lineNum = 1;
+	error_handler = _error_handler;
 }
 
 Token Tokenizer::next_token() {
 	string str;
 	str.clear();
-	while (isspace(ch)) read_char();
+	while (isspace(ch)) {
+		if (ch == '\n') {
+			this->lineNum++;
+		}
+		read_char();
+	}
+	
 	if (isLetter_Special(ch)) {							// 标识符或者保留字
 		while (isLetter_General(ch)) {
 			str.append(1, ch);
@@ -38,16 +68,20 @@ Token Tokenizer::next_token() {
 		}
 		return Token(
 			reservedWords_lookup(str),
-			0, str
+			0, 
+			str,
+			this->lineNum
 		);
 	} else if (isdigit(ch)) {
 		return Token(
 			INTCON,
 			read_number(),
-			""
+			"",
+			this->lineNum
 		);
 	} else {
 		Token newtoken = Token();
+		newtoken.setLineNum(this->lineNum);
 		switch (ch)
 		{
 		case '+': newtoken.setType(PLUS); break;
@@ -96,32 +130,38 @@ Token Tokenizer::next_token() {
 			read_char();
 			if (ch == '=') newtoken.setType(NEQ);
 			else {
-				// TODO: raise error
+				error_handler->raise_error(Error(lineNum, ILLEGAL_SYMBOL));
 			}
 			break;
 		case '\'':
 			read_char();
+			if (isWrongLetter(ch)) {
+				error_handler->raise_error(Error(lineNum, ILLEGAL_SYMBOL));
+			}
 			newtoken.setNumber(ch);
 			read_char();
 			if (ch == '\'') newtoken.setType(CHARCON);
 			else {
-				// TODO: raise error
+				error_handler->raise_error(Error(lineNum, ILLEGAL_SYMBOL));
 			}
 			break;
 		case '"':
 			while (true) {
 				read_char();
 				if (ch == '\"') break;
+				if (isWrongStrLetter(ch)) {
+					error_handler->raise_error(Error(lineNum, ILLEGAL_SYMBOL));
+				}
 				str.append(1, ch);
 			}
 			newtoken.setStr(str);
-			newtoken.setType(STRCON);	// TODO: raise error
+			newtoken.setType(STRCON);	// TODO: raise error?
 			break;
 		case EOF:
 			newtoken.setType(ENDFILE);
 			break;
-		default:						// TODO: raise error
-			// *a = 1;
+		default:
+			error_handler->raise_error(Error(lineNum, ILLEGAL_SYMBOL));
 			break;
 		}
 		read_char();
@@ -135,6 +175,30 @@ bool Tokenizer::isLetter_Special(char c) {
 	if (isalpha(c))  return true;
 	else if (c == '_') return true;
 	else return false;
+}
+
+bool Tokenizer::isWrongStrLetter(char c) {
+	if (c <= 126 && c >= 35) return false;
+	else if (c == 32) return false;
+	else if (c == 33) return false;
+	else return true;
+}
+
+bool Tokenizer::isWrongLetter(char c) {
+	if (isalpha(c)) return false;
+	else if (isdigit(c)) return	false;
+	else {
+		switch (c) {
+		case '_':
+		case '+': 
+		case '-': 
+		case '*': 
+		case '/':
+			return false;
+		default:
+			return true;
+		}
+	}
 }
 
 bool Tokenizer::isLetter_General(char c) {

@@ -1,4 +1,4 @@
-﻿#ifndef TOKEN_H
+#ifndef TOKEN_H
 #define TOKEN_H
 
 #include<string>
@@ -54,15 +54,19 @@ private:
 	Symbol type;
 	int number;
 	string str;
+	int lineNum;
 
 public:
-	Token(Symbol _type, int _number, string _str);
+	Token(Symbol _type, int _number, string _str, int _lineNum);
 	Token();
 	void setType(Symbol _type);
 	void setNumber(int _number);
 	void setStr(string _str);
+	void setLineNum(int _line_num);
+
 	Symbol getType();
 	int getNum();
+	int getLineNum();
 	string getStr();
 	string toStr();
 };
