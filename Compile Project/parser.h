@@ -1,4 +1,4 @@
-#ifndef PARSER__H
+﻿#ifndef PARSER__H
 #define PARSER__H
 
 #include"tokenize.h"
@@ -20,20 +20,18 @@ enum Expression_Type
 
 class Parser {
 public:
-	Parser(list<Token>, Error_handler* _error_handler);
+	Parser(list<Token>, Error_handler* _error_handler, SymbolTable*);
 	void printWholeTree(string _out_file_string);
 
 private:
 	list<Token> tokenlist;
 	list<Token>::iterator iter;
 	GrammarNode root;
-	// map<string, GrammarValue> funcMap;	// TODO: too Ugly!
 	ofstream outFile;
 	Error_handler* error_handler;
-	identifierTable* identifier_table;
-	funcTable* func_table;
+	SymbolTable* func_table;
 	func* current_func;
-	int level;
+	func* _golabl_func;
 	
 	void appendEnd(GrammarNode* father);
 	void appendEnd(GrammarNode* father, Symbol token_type);
@@ -44,24 +42,24 @@ private:
 	void variableDeclareParser(GrammarNode* father);
 	void variableDefineParser(GrammarNode* father);
 
-	Expression_Type expressionParser(GrammarNode* father);
-	Expression_Type itemParser(GrammarNode* father);
-	Expression_Type factorParser(GrammarNode* father);
+	Expression_Type expressionParser(GrammarNode* father, identifier*);
+	Expression_Type itemParser(GrammarNode* father, identifier*);
+	Expression_Type factorParser(GrammarNode* father, identifier*);
 
-	void integerParser(GrammarNode* father);
-	void unsignIntParser(GrammarNode* father);
-	void stringParser(GrammarNode* father);
-	void strideParser(GrammarNode* father);
+	int integerParser(GrammarNode* father);
+	int unsignIntParser(GrammarNode* father);
+	string stringParser(GrammarNode* father);
+	int strideParser(GrammarNode* father);
 
 	void variableIdentifier(GrammarNode* father, IDENTIFIER_TYPE _type);
 
-	void ifConditionParser(GrammarNode* father);
+	void ifConditionParser(GrammarNode* father, string, bool);
 	void ifStatementParser(GrammarNode* father);
 	void loopStatementParser(GrammarNode* father);
 	void assignStatementParser(GrammarNode* father);
 	void statementParser(GrammarNode* father);
 	void statementCollectionParser(GrammarNode* father);
-	func* returnCallStatementParser(GrammarNode* father);
+	func* returnCallStatementParser(GrammarNode* father, identifier* t0);
 	void noReturnCallStatementParser(GrammarNode* father);
 
 	void mainFunctionParser(GrammarNode* father);
@@ -80,12 +78,14 @@ private:
 	void compositeStatementParser(GrammarNode* father);
 	void programParser(GrammarNode* father);
 
-	void declareIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type);
-	identifier analyseIdentifierParser();
+	identifier* declareIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type);
+	void declareParaIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, int);
+	identifier* analyseIdentifierParser();
 	func* declareFunctionParser(FUNC_TYPE _type);
 	func* analyseFunctionParser();
 
 	void printTree(GrammarNode* father);
+	void midCodeAdd(midCode _mid_code);
 };
 
 bool isRelationOperator(Symbol op);

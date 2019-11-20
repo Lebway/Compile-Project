@@ -1,4 +1,4 @@
-#include "error_handler.h"
+﻿#include "error_handler.h"
 #include "error.h"
 using namespace std;
 
@@ -13,8 +13,6 @@ void Error_handler::output(string _out_file) {
 	for (iter = this->errorList.begin(); iter != errorList.end(); iter++) {
 		outFile << (*iter).toStr() << endl;
 	}
-
-	// TODO: print it
 }
 
 void Error_handler::raise_error(Error _error) {

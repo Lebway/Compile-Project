@@ -1,4 +1,4 @@
-#include"tokenize.h"
+﻿#include"tokenize.h"
 #include"error_handler.h"
 #include<fstream>
 #include<string>
@@ -10,28 +10,22 @@
 using namespace std;
 
 Tokenizer::Tokenizer() {
-	reservedWords.insert(pair<string, Symbol>("const", CONSTTK));
-	reservedWords.insert(pair<string, Symbol>("int", INTTK));
-	reservedWords.insert(pair<string, Symbol>("char", CHARTK));
-	reservedWords.insert(pair<string, Symbol>("void", VOIDTK));
-	reservedWords.insert(pair<string, Symbol>("main", MAINTK));
-	reservedWords.insert(pair<string, Symbol>("if", IFTK));
-	reservedWords.insert(pair<string, Symbol>("else", ELSETK));
-	reservedWords.insert(pair<string, Symbol>("do", DOTK));
-	reservedWords.insert(pair<string, Symbol>("while", WHILETK));
-	reservedWords.insert(pair<string, Symbol>("for", FORTK));
-	reservedWords.insert(pair<string, Symbol>("scanf", SCANFTK));
-	reservedWords.insert(pair<string, Symbol>("printf", PRINTFTK));
-	reservedWords.insert(pair<string, Symbol>("return", RETURNTK));
+	make_dict();
 	read_char();
 	this->lineNum = 1;
-
 }
 
 
 Tokenizer::Tokenizer(string filename, Error_handler* _error_handler) {
 	ch = 0; 
 	inFile.open(filename);
+	make_dict();
+	read_char();
+	this->lineNum = 1;
+	error_handler = _error_handler;
+}
+
+void Tokenizer::make_dict() {
 	reservedWords.insert(pair<string, Symbol>("const", CONSTTK));
 	reservedWords.insert(pair<string, Symbol>("int", INTTK));
 	reservedWords.insert(pair<string, Symbol>("char", CHARTK));
@@ -45,10 +39,6 @@ Tokenizer::Tokenizer(string filename, Error_handler* _error_handler) {
 	reservedWords.insert(pair<string, Symbol>("scanf", SCANFTK));
 	reservedWords.insert(pair<string, Symbol>("printf", PRINTFTK));
 	reservedWords.insert(pair<string, Symbol>("return", RETURNTK));
-	read_char();
-
-	this->lineNum = 1;
-	error_handler = _error_handler;
 }
 
 Token Tokenizer::next_token() {

@@ -1,22 +1,20 @@
-#include "parser.h"
+﻿#include "parser.h"
+#include <cassert>
 
 using namespace std;
 
-Parser::Parser(list<Token> _tokenlist, Error_handler* _error_handler) {
+Parser::Parser(list<Token> _tokenlist, Error_handler* _error_handler, SymbolTable* _symbol_table) {
 	this->error_handler = _error_handler;
 	this->tokenlist = _tokenlist;
 	this->iter = this->tokenlist.begin();
 	this->root = GrammarNode(MID_NODE, PROGRAM);
 
-	this->level = 1;
-	// TODO: change it !
-	this->identifier_table = new identifierTable();
-	this->func_table = new funcTable();
-	this->current_func = NULL;
-
+	this->func_table = _symbol_table;
+	func_table->addFunc("_global_func", GLOBAL_FUNC);
+	this->_golabl_func = func_table->findFunc("_global_func");
+	this->current_func = func_table->findFunc("_global_func");
 
 	programParser(&(this->root));
-
 }
 
 void Parser::appendEnd(GrammarNode* father) {
@@ -65,37 +63,42 @@ void Parser::constDeclareParser(GrammarNode* father) {
 void Parser::constDefineParser(GrammarNode* father) {
 	if ((*iter).getType() == CHARTK) {		// char
 		appendEnd(father, CHARTK);
-		declareIdentifierParser(CONST_IDENTIFIER, CHAR_IDENTIFIER);
+		identifier* t0;
+		t0 = declareIdentifierParser(CONST_IDENTIFIER, CHAR_IDENTIFIER);
 		appendEnd(father, IDENFR);
 		appendEnd(father, ASSIGN);
 		if ((*iter).getType() != CHARCON) {
 			this->error_handler->raise_error((*iter).getLineNum(), ONLY_INT_CHAR_ASSIGN_CONST);
 		} 
+		midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN_CHAR, t0, (*iter).getNum()));
 		appendEnd(father, CHARCON);
 		while ((*iter).getType() == COMMA) {
 			appendEnd(father, COMMA);
-			declareIdentifierParser(CONST_IDENTIFIER, CHAR_IDENTIFIER);
+			t0 = declareIdentifierParser(CONST_IDENTIFIER, CHAR_IDENTIFIER);
 			appendEnd(father, IDENFR);
 			appendEnd(father, ASSIGN);
 			if ((*iter).getType() != CHARCON) {
 				this->error_handler->raise_error((*iter).getLineNum(), ONLY_INT_CHAR_ASSIGN_CONST);
 			}
+			midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN_CHAR, t0, (*iter).getNum()));
 			appendEnd(father, CHARCON);
 		}
 	} else if ((*iter).getType() == INTTK) {		// int
 		appendEnd(father, INTTK);
-		declareIdentifierParser(CONST_IDENTIFIER, INT_IDENTIFIER);
+		identifier* t0;
+		int value = 1;
+		t0 = declareIdentifierParser(CONST_IDENTIFIER, INT_IDENTIFIER);
 		appendEnd(father, IDENFR);
 		appendEnd(father, ASSIGN);
 		if ((*iter).getType() == INTCON) {
 			GrammarNode* thisNode = appendMidNode(father, INTEGER);
-			integerParser(thisNode);
+			value = integerParser(thisNode);
 		} else if ((*iter).getType() == PLUS || (*iter).getType() == MINU) {
 			iter++;
 			if ((*iter).getType() == INTCON) {
 				iter--;
 				GrammarNode* thisNode = appendMidNode(father, INTEGER);
-				integerParser(thisNode);
+				value = integerParser(thisNode);
 			} else {
 				this->error_handler->raise_error((*iter).getLineNum(), ONLY_INT_CHAR_ASSIGN_CONST);
 			}
@@ -103,21 +106,24 @@ void Parser::constDefineParser(GrammarNode* father) {
 			iter++;
 			this->error_handler->raise_error((*iter).getLineNum(), ONLY_INT_CHAR_ASSIGN_CONST);
 		}
+		midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN_INT, t0, value));
+
 		
 		while ((*iter).getType() == COMMA) {
 			appendEnd(father, COMMA);
-			declareIdentifierParser(CONST_IDENTIFIER, INT_IDENTIFIER);
+			value = 1;
+			t0 = declareIdentifierParser(CONST_IDENTIFIER, INT_IDENTIFIER);
 			appendEnd(father, IDENFR);
 			appendEnd(father, ASSIGN);
 			if ((*iter).getType() == INTCON) {
 				GrammarNode* thisNode = appendMidNode(father, INTEGER);
-				integerParser(thisNode);
+				value = integerParser(thisNode);
 			} else if ((*iter).getType() == PLUS || (*iter).getType() == MINU) {
 				iter++;
 				if ((*iter).getType() == INTCON) {
 					iter--;
 					GrammarNode* thisNode = appendMidNode(father, INTEGER);
-					integerParser(thisNode);
+					value = integerParser(thisNode);
 				} else {
 					this->error_handler->raise_error((*iter).getLineNum(), ONLY_INT_CHAR_ASSIGN_CONST);
 				}
@@ -125,6 +131,7 @@ void Parser::constDefineParser(GrammarNode* father) {
 				iter++;
 				this->error_handler->raise_error((*iter).getLineNum(), ONLY_INT_CHAR_ASSIGN_CONST);
 			}
+			midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN_INT, t0, value));
 		}
 	} else {
 		// TODO: raise error
@@ -180,104 +187,128 @@ void Parser::variableDefineParser(GrammarNode* father) {
 
 // 表达式
 // ＜表达式＞ ::= ［＋｜－］＜项＞{＜加法运算符＞＜项＞} 
-Expression_Type Parser::expressionParser(GrammarNode* father) {
+Expression_Type Parser::expressionParser(GrammarNode* father, identifier* t0) {
 	Expression_Type return_type = CHAR_EXPRESSION;
+	identifier* t1 = this->current_func->genTempVar(INT_IDENTIFIER);
+	bool plus_flag = true;
 	if ((*iter).getType() == PLUS) {
 		return_type = INT_EXPERSSION;
 		appendEnd(father, PLUS);
 	} else if ((*iter).getType() == MINU) {
 		return_type = INT_EXPERSSION;
 		appendEnd(father, MINU);
+		plus_flag = false;
 	}
 	{
 		GrammarNode* thisNode = appendMidNode(father, ITEM);
-		Expression_Type item_type = itemParser(thisNode);
-		if (item_type == INT_EXPERSSION) {
-			return_type = INT_EXPERSSION;
-		}
+		Expression_Type item_type = itemParser(thisNode, t1);
+		if (item_type == INT_EXPERSSION) return_type = INT_EXPERSSION;
+		if (plus_flag) midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN, t0, t1));
+		else midCodeAdd(midCode(midCode::MidCodeInstr::NEG, t0, t1));
+		plus_flag = true;
 	}
 	while ((*iter).getType() == PLUS || (*iter).getType() == MINU) {
+		if ((*iter).getType() == MINU) plus_flag = false;
 		return_type = INT_EXPERSSION;
 		appendEnd(father);	// + | -
 		GrammarNode* thisNode = appendMidNode(father, ITEM);
-		itemParser(thisNode);
+		itemParser(thisNode, t1);
+		if (plus_flag) midCodeAdd(midCode(midCode::MidCodeInstr::ADD, t0, t0, t1));
+		else midCodeAdd(midCode(midCode::MidCodeInstr::SUB, t0, t0, t1));
+		plus_flag = true;
 	}
+	if (return_type == CHAR_EXPRESSION) t0->type = CHAR_IDENTIFIER;
 	return return_type;
 }
 
 // 项
 // ＜项＞ ::= ＜因子＞{＜乘法运算符＞＜因子＞}
-Expression_Type Parser::itemParser(GrammarNode* father) {
+Expression_Type Parser::itemParser(GrammarNode* father, identifier* t0) {
 	Expression_Type return_type = CHAR_EXPRESSION;
+	identifier* t1 = this->current_func->genTempVar(INT_IDENTIFIER);
 	{
 		GrammarNode* thisNode = appendMidNode(father, FACTOR);
-		return_type = factorParser(thisNode);
+		return_type = factorParser(thisNode, t1);
+		midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN, t0, t1));
 	}
 	while ((*iter).getType() == MULT || (*iter).getType() == DIV) {
+		Symbol factor_type = (*iter).getType();
 		return_type = INT_EXPERSSION;
 		appendEnd(father);	// * | /
 		GrammarNode* thisNode = appendMidNode(father, FACTOR);
-		factorParser(thisNode);
+		factorParser(thisNode, t1);
+		if (factor_type == MULT) midCodeAdd(midCode(midCode::MidCodeInstr::MULT, t0, t0, t1));
+		else midCodeAdd(midCode(midCode::MidCodeInstr::DIV, t0, t0, t1));
 	}
+	if (return_type == CHAR_EXPRESSION) t0->type = CHAR_IDENTIFIER;
 	return return_type;
 }
 
 // 因子
 // ＜因子＞ ::= ＜标识符＞｜＜标识符＞'['＜表达式＞']'|'('＜表达式＞')'｜＜整数＞|＜字符＞｜＜有返回值函数调用语句＞
-Expression_Type Parser::factorParser(GrammarNode* father) {
+Expression_Type Parser::factorParser(GrammarNode* father, identifier* t0) {
 	if ((*iter).getType() == CHARCON) {		// ＜字符＞
+		midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN_CHAR, t0, (*iter).getNum()));
 		appendEnd(father, CHARCON);
+		t0->type = CHAR_IDENTIFIER;
 		return CHAR_EXPRESSION;
 	} else if ((*iter).getType() == LPARENT) {	// '('＜表达式＞')'
 		appendEnd(father, LPARENT);
+		identifier* t1 = this->current_func->genTempVar(INT_IDENTIFIER);
 		{
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-			expressionParser(thisNode);
+			expressionParser(thisNode, t1);
 		}
 		appendEnd(father, RPARENT);
+		midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN, t0, t1));
 		return INT_EXPERSSION;
 	} else if ((*iter).getType() == PLUS || (*iter).getType() == MINU || (*iter).getType() == INTCON) {
 		GrammarNode* thisNode = appendMidNode(father, INTEGER);
-		integerParser(thisNode);
+		int value = integerParser(thisNode);
+		midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN_INT, t0, value));
 		return INT_EXPERSSION;
 	} else {		// ＜标识符＞｜＜标识符＞'['＜表达式＞']'
 		// TODO: change here
 		const func* func_res = analyseFunctionParser();
 		if (func_res->type == ILLEGAL_FUNC) {
-			identifier result = analyseIdentifierParser();
-			if (result.kind == ILLEGAL_KIND) {
+			identifier* result = analyseIdentifierParser();
+			assert(result->kind != ILLEGAL_KIND);
+			if (result->kind == ILLEGAL_KIND) {
 				this->error_handler->raise_error((*iter).getLineNum(), UNDEFINEDNAME);
 			}
 			appendEnd(father, IDENFR);
 			if ((*iter).getType() == LBRACK) {
+				// t0 = a[t2]
+				identifier* t2 = this->current_func->genTempVar(INT_IDENTIFIER);
 				appendEnd(father, LBRACK);
 				{
 					Expression_Type array_index_type;
 					GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-					array_index_type = expressionParser(thisNode);
+					array_index_type = expressionParser(thisNode, t2);
 					if (array_index_type == CHAR_EXPRESSION) {
 						this->error_handler->raise_error((*iter).getLineNum(), ILLEGAL_ARRAY_INDEX);
 					}
+					midCodeAdd(midCode(midCode::MidCodeInstr::LOAD_IND, t0, result, t2));
 				}
 				appendEnd(father, RBRACK);
+			} else {	// t0 = a
+				midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN, t0, result));
 			}
-
-			if (result.type == CHAR_IDENTIFIER) {
+			if (result->type == CHAR_IDENTIFIER) {
+				t0->type = CHAR_IDENTIFIER;
 				return CHAR_EXPRESSION;
-			} else {
-				return INT_EXPERSSION;
 			}
-
+			else return INT_EXPERSSION;
 		} else if (func_res->type == VOID_FUNC) {
-			// TODO: raise error
+			assert(0);
 		} else { // return function
 			GrammarNode* thisNode = appendMidNode(father, RETURN_CALL_STATEMENT);
-			func* call_func = returnCallStatementParser(thisNode);
+			func* call_func = returnCallStatementParser(thisNode, t0);
 			if (call_func->type == CHAR_FUNC) {
+				t0->type = CHAR_IDENTIFIER;
 				return CHAR_EXPRESSION;
-			} else {
-				return INT_EXPERSSION;
 			}
+			else return INT_EXPERSSION;
 		}
 	}
 	return INT_EXPERSSION;
@@ -285,122 +316,183 @@ Expression_Type Parser::factorParser(GrammarNode* father) {
 
 // 整数
 // ＜整数＞ ::= ［＋｜－］＜无符号整数＞
-void Parser::integerParser(GrammarNode* father) {
+int Parser::integerParser(GrammarNode* father) {
+	int value = 1;
 	if ((*iter).getType() == PLUS) {
 		appendEnd(father, PLUS);
 	} else if ((*iter).getType() == MINU) {
 		appendEnd(father, MINU);
+		value = -1;
 	}
 	GrammarNode* thisNode = appendMidNode(father, UNSIGNINT);
-	unsignIntParser(thisNode);
+	value = value * unsignIntParser(thisNode);
+	return value;
 }
 
 // 无符号整数
-void Parser::unsignIntParser(GrammarNode* father) {
+int Parser::unsignIntParser(GrammarNode* father) {
 	// TODO: raiser error when not a legal Unsigned Int
+	int value = (*iter).getNum();
 	appendEnd(father, INTCON);
+	return value;
 }
 
 // 字符串
-void Parser::stringParser(GrammarNode* father) {
+string Parser::stringParser(GrammarNode* father) {
+	string str = (*iter).getStr();
 	appendEnd(father, STRCON);
+	return str;
 }
 
 // 步长
-void Parser::strideParser(GrammarNode* father) {
+int Parser::strideParser(GrammarNode* father) {
 	GrammarNode* thisNode = appendMidNode(father, UNSIGNINT);
-	unsignIntParser(thisNode);
+	return unsignIntParser(thisNode);
 }
 
 // 条件
-// ＜条件＞    ::=  ＜表达式＞＜关系运算符＞＜表达式＞｜＜表达式＞
-void Parser::ifConditionParser(GrammarNode* father) {
+// ＜条件＞  ::=  ＜表达式＞＜关系运算符＞＜表达式＞｜＜表达式＞
+void Parser::ifConditionParser(GrammarNode* father, string label_else, bool true_jump) {
 	// TODO: 整型表达式之间才能进行关系运算
+	identifier* t1 = this->current_func->genTempVar(INT_IDENTIFIER);
+	identifier* t2 = NULL;
 	Expression_Type type1 = INT_EXPERSSION;
 	Expression_Type type2 = INT_EXPERSSION;
-	{
+	{ 
 		GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-		type1 = expressionParser(thisNode);
+		type1 = expressionParser(thisNode, t1);
 		if (type1 == CHAR_EXPRESSION) {
 			this->error_handler->raise_error((*iter).getLineNum(), ILLEGAL_IF_CONDITION);
 		}
 	}
 	if (isRelationOperator((*iter).getType())) {
+		Symbol branch_type = (*iter).getType();
+		t2 = this->current_func->genTempVar(INT_IDENTIFIER);
 		appendEnd(father);
 		{
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-			type2 = expressionParser(thisNode);
+			type2 = expressionParser(thisNode, t2);
 			if (type2 == CHAR_EXPRESSION) {
 				this->error_handler->raise_error((*iter).getLineNum(), ILLEGAL_IF_CONDITION);
 			}
 		}
+
+		switch (branch_type) {
+		case LSS:	// if(a<b) -> if a >= b branch to else
+			if(true_jump) midCodeAdd(midCode(midCode::MidCodeInstr::BLT, t1, t2, NULL, label_else));
+			else midCodeAdd(midCode(midCode::MidCodeInstr::BGE, t1, t2, NULL, label_else));
+			break;
+		case LEQ:   // if(a<=b) -> if a > b branch to else
+			if (true_jump) midCodeAdd(midCode(midCode::MidCodeInstr::BLE, t1, t2, NULL, label_else));
+			else midCodeAdd(midCode(midCode::MidCodeInstr::BGT, t1, t2, NULL, label_else));
+			break;
+		case GRE:	// if(a>b) -> if a <= b branch to else
+			if (true_jump) midCodeAdd(midCode(midCode::MidCodeInstr::BGT, t1, t2, NULL, label_else));
+			else midCodeAdd(midCode(midCode::MidCodeInstr::BLE, t1, t2, NULL, label_else));
+			break;
+		case GEQ:	// if(a>=b) -> if a < b branch to else
+			if (true_jump) midCodeAdd(midCode(midCode::MidCodeInstr::BGE, t1, t2, NULL, label_else));
+			else midCodeAdd(midCode(midCode::MidCodeInstr::BLT, t1, t2, NULL, label_else));
+			break;
+		case EQL:	// if(a==b) -> if a != b branch to else
+			if (true_jump) midCodeAdd(midCode(midCode::MidCodeInstr::BEQ, t1, t2, NULL, label_else));
+			else midCodeAdd(midCode(midCode::MidCodeInstr::BNE, t1, t2, NULL, label_else));
+			break;
+		case NEQ:	// if(a!=b) -> if a == b branch to else
+			if (true_jump) midCodeAdd(midCode(midCode::MidCodeInstr::BNE, t1, t2, NULL, label_else));
+			else midCodeAdd(midCode(midCode::MidCodeInstr::BEQ, t1, t2, NULL, label_else));
+			break;
+		default:
+			assert(0);
+		}
+	} else {
+		if (true_jump) midCodeAdd(midCode(midCode::MidCodeInstr::BNZ, t1, NULL, NULL, label_else));
+		else midCodeAdd(midCode(midCode::MidCodeInstr::BZ, t1, NULL, NULL, label_else));
 	}
 }
 
 // 条件语句
 // if '('＜条件＞')'＜语句＞［else＜语句＞］
 void Parser::ifStatementParser(GrammarNode* father) {
+	string label_else = midCode::genLabel();
+	string label_end = midCode::genLabel();
 	appendEnd(father, IFTK);
 	appendEnd(father, LPARENT);
 	{
 		GrammarNode* thisNode = appendMidNode(father, IFCONDITION);
-		ifConditionParser(thisNode);
+		ifConditionParser(thisNode, label_else, false); // ifCondition if false, branch to the label_else
 	}
 	appendEnd(father, RPARENT);
 	{
 		GrammarNode* thisNode = appendMidNode(father, STATEMENT);
 		statementParser(thisNode);
 	}
+	midCodeAdd(midCode(midCode::MidCodeInstr::JUMP, label_end));		// jump label_end
+	midCodeAdd(midCode(midCode::MidCodeInstr::LABEL, label_else));		// label_else
 	if ((*iter).getType() == ELSETK) {
 		appendEnd(father, ELSETK);
 		GrammarNode* thisNode = appendMidNode(father, STATEMENT);
 		statementParser(thisNode);
 	}
+	midCodeAdd(midCode(midCode::MidCodeInstr::LABEL, label_end));		// label_end
 }
 
 // 赋值语句 ＜赋值语句＞ ::=  ＜标识符＞＝＜表达式＞|＜标识符＞'['＜表达式＞']'=＜表达式＞
 void Parser::assignStatementParser(GrammarNode* father) {
-	identifier result = analyseIdentifierParser();
-	if (result.kind == ILLEGAL_KIND) {
+	identifier* t0 = analyseIdentifierParser();
+	identifier* t2 = this->current_func->genTempVar(INT_IDENTIFIER);
+	identifier* t1 = NULL;
+	if (t0->kind == ILLEGAL_KIND) {
 		this->error_handler->raise_error((*iter).getLineNum(), UNDEFINEDNAME);
 	}
 	appendEnd(father, IDENFR);
-	if ((*iter).getType() == LBRACK) {
+	if ((*iter).getType() == LBRACK) {	// t0[t1] = t2
+		t1 = this->current_func->genTempVar(INT_IDENTIFIER);
 		appendEnd(father, LBRACK);
 		{
 			Expression_Type array_index_type;
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-			array_index_type = expressionParser(thisNode);
+			array_index_type = expressionParser(thisNode, t1);
 			if (array_index_type == CHAR_EXPRESSION) {
 				this->error_handler->raise_error((*iter).getLineNum(), ILLEGAL_ARRAY_INDEX);
 			}
 		}
 		appendEnd(father, RBRACK);
-	} else if (result.kind == CONST_IDENTIFIER) {
+	} else if (t0->kind == CONST_IDENTIFIER) {
 		this->error_handler->raise_error((*iter).getLineNum(), ASSIGN_TO_CONST);
 	}
 	appendEnd(father, ASSIGN);
 	{
 		GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-		expressionParser(thisNode);
+		expressionParser(thisNode, t2);
 	}
+
+	if (t1 == NULL) midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN, t0, t2));	// t0 = t2
+	else midCodeAdd(midCode(midCode::MidCodeInstr::STORE_IND, t0, t1, t2));		// t0[t1] = t2
 }
 
 // ＜循环语句＞   ::=  while '('＜条件＞')'＜语句＞| do＜语句＞while '('＜条件＞')' |for'('＜标识符＞＝＜表达式＞;＜条件＞;＜标识符＞＝＜标识符＞(+|-)＜步长＞')'＜语句＞
 void Parser::loopStatementParser(GrammarNode* father) {
 	if ((*iter).getType() == WHILETK) {
+		string label_head = midCode::genLabel();
+		string label_end = midCode::genLabel();
+		midCodeAdd(midCode(midCode::MidCodeInstr::LABEL, label_head));
 		appendEnd(father, WHILETK);
 		appendEnd(father, LPARENT);
 		{
 			GrammarNode* thisNode = appendMidNode(father, IFCONDITION);
-			ifConditionParser(thisNode);
+			ifConditionParser(thisNode, label_end, false);
 		}
 		appendEnd(father, RPARENT);
 		{
 			GrammarNode* thisNode = appendMidNode(father, STATEMENT);
 			statementParser(thisNode);
 		}
+		midCodeAdd(midCode(midCode::MidCodeInstr::JUMP, label_head));
+		midCodeAdd(midCode(midCode::MidCodeInstr::LABEL, label_end));
 	} else if ((*iter).getType() == DOTK) {
+		string label_head = midCode::genLabel();
+		midCodeAdd(midCode(midCode::MidCodeInstr::LABEL, label_head));
 		appendEnd(father, DOTK);
 		{
 			GrammarNode* thisNode = appendMidNode(father, STATEMENT);
@@ -415,64 +507,78 @@ void Parser::loopStatementParser(GrammarNode* father) {
 		appendEnd(father, LPARENT);
 		{
 			GrammarNode* thisNode = appendMidNode(father, IFCONDITION);
-			ifConditionParser(thisNode);
+			ifConditionParser(thisNode, label_head, true);
 		}
 		appendEnd(father, RPARENT);
 	} else if ((*iter).getType() == FORTK) {
+		string label_head = midCode::genLabel();
+		string label_end = midCode::genLabel();
 		appendEnd(father, FORTK);
 		appendEnd(father, LPARENT);
-		identifier result_init = analyseIdentifierParser();
-		if (result_init.kind == ILLEGAL_KIND) {
+		// init
+		identifier* result_init = analyseIdentifierParser();
+		if (result_init->kind == ILLEGAL_KIND) {
 			this->error_handler->raise_error((*iter).getLineNum(), UNDEFINEDNAME);
 		}
 		appendEnd(father, IDENFR);
-		if (result_init.kind == CONST_IDENTIFIER) {
+		if (result_init->kind == CONST_IDENTIFIER) {
 			this->error_handler->raise_error((*iter).getLineNum(), ASSIGN_TO_CONST);
 		}
 		appendEnd(father, ASSIGN);
+		identifier* t1 = this->current_func->genTempVar(INT_IDENTIFIER);
 		{
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-			expressionParser(thisNode);
+			expressionParser(thisNode, t1);
 		}
+		midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN, result_init, t1));
 		appendEnd(father, SEMICN);
+		// condition
+		midCodeAdd(midCode(midCode::MidCodeInstr::LABEL, label_head));	// head
 		{
 			GrammarNode* thisNode = appendMidNode(father, IFCONDITION);
-			ifConditionParser(thisNode);
+			ifConditionParser(thisNode, label_end, false);
 		}
 		appendEnd(father, SEMICN);
-		identifier result_refresh = analyseIdentifierParser();
-		if (result_refresh.kind == ILLEGAL_KIND) {
+		// update
+		identifier* update_t0 = analyseIdentifierParser();
+		identifier* update_t1;
+		if (update_t0->kind == ILLEGAL_KIND) {
 			this->error_handler->raise_error((*iter).getLineNum(), UNDEFINEDNAME);
 		}
 		appendEnd(father, IDENFR);
-		if (result_refresh.kind == CONST_IDENTIFIER) {
+		if (update_t0->kind == CONST_IDENTIFIER) {
 			this->error_handler->raise_error((*iter).getLineNum(), ASSIGN_TO_CONST);
 		}
 		appendEnd(father, ASSIGN);
 		{
-			identifier result_refresh_right = analyseIdentifierParser();
-			if (result_refresh_right.kind == ILLEGAL_KIND) {
+			update_t1 = analyseIdentifierParser();
+			if (update_t1->kind == ILLEGAL_KIND) {
 				this->error_handler->raise_error((*iter).getLineNum(), UNDEFINEDNAME);
 			}
 			appendEnd(father, IDENFR);
 		}
-		if ((*iter).getType() == PLUS || (*iter).getType() == MINU) {
-			appendEnd(father);
-		} else {
-			// TODO: raise error
-		}
+		Symbol update_op = (*iter).getType();
+		int update_value;
+		assert(update_op == PLUS || update_op == MINU);
+		appendEnd(father);
 		{
 			GrammarNode* thisNode = appendMidNode(father, STRIDE);
-			strideParser(thisNode);
+			update_value = strideParser(thisNode);
 		}
 		appendEnd(father, RPARENT);
 		{
 			GrammarNode* thisNode = appendMidNode(father, STATEMENT);
 			statementParser(thisNode);
 		}
-	} else {
-		// TODO: raise error
-	}
+		// update
+		if (update_op == PLUS) midCodeAdd(midCode(midCode::MidCodeInstr::ADDI, update_t0, update_t1, update_value));
+		else midCodeAdd(midCode(midCode::MidCodeInstr::SUBI, update_t0, update_t1, update_value));
+
+		// goto head
+		midCodeAdd(midCode(midCode::MidCodeInstr::JUMP, label_head));
+
+		midCodeAdd(midCode(midCode::MidCodeInstr::LABEL, label_end));
+	} else assert(0);
 }
 
 // 读语句
@@ -481,18 +587,20 @@ void Parser::scanfStatementParser(GrammarNode* father) {
 	appendEnd(father, SCANFTK);
 	appendEnd(father, LPARENT);
 	{
-		identifier result = analyseIdentifierParser();
-		if (result.kind == ILLEGAL_KIND) {
+		identifier* result = analyseIdentifierParser();
+		if (result->kind == ILLEGAL_KIND) {
 			this->error_handler->raise_error((*iter).getLineNum(), UNDEFINEDNAME);
 		}
+		midCodeAdd(midCode(midCode::MidCodeInstr::INPUT, result));
 		appendEnd(father, IDENFR);
 	}
 	while ((*iter).getType() == COMMA) {
 		appendEnd(father, COMMA);
-		identifier result = analyseIdentifierParser();
-		if (result.kind == ILLEGAL_KIND) {
+		identifier* result = analyseIdentifierParser();
+		if (result->kind == ILLEGAL_KIND) {
 			this->error_handler->raise_error((*iter).getLineNum(), UNDEFINEDNAME);
 		}
+		midCodeAdd(midCode(midCode::MidCodeInstr::INPUT, result));
 		appendEnd(father, IDENFR);
 	}
 	appendEnd(father, RPARENT);
@@ -505,16 +613,26 @@ void Parser::printfStatementParser(GrammarNode* father) {
 	appendEnd(father, PRINTFTK);
 	appendEnd(father, LPARENT);
 	if ((*iter).getType() == STRCON) {
+		static int strIndex = 0;
+		strIndex++;
+		string strName = "str" + to_string(strIndex);
 		GrammarNode* thisNode = appendMidNode(father, STRING);
-		stringParser(thisNode);
+		string str = stringParser(thisNode);
+		this->current_func->strToPrint.insert(pair<string, string>(strName, str));
 		if ((*iter).getType() == COMMA) {
 			appendEnd(father, COMMA);
+			identifier* t1 = this->current_func->genTempVar(INT_IDENTIFIER);
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-			expressionParser(thisNode);
+			expressionParser(thisNode, t1);
+			midCodeAdd(midCode(midCode::MidCodeInstr::OUTPUT, t1, strName));
+		} else {
+			midCodeAdd(midCode(midCode::MidCodeInstr::OUTPUT, strName));
 		}
 	} else {
+		identifier* t1 = this->current_func->genTempVar(INT_IDENTIFIER);
 		GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-		expressionParser(thisNode);
+		expressionParser(thisNode, t1);
+		midCodeAdd(midCode(midCode::MidCodeInstr::OUTPUT, t1));
 	}
 	appendEnd(father, RPARENT);
 }
@@ -525,29 +643,32 @@ void Parser::returnStatementParser(GrammarNode* father) {
 	appendEnd(father, RETURNTK);
 	if ((*iter).getType() == LPARENT) {
 		appendEnd(father, LPARENT);
+		identifier* tmp = this->current_func->genTempVar(INT_IDENTIFIER);
 		{
 			Expression_Type return_expression_type;
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-			return_expression_type = expressionParser(thisNode);
+			return_expression_type = expressionParser(thisNode, tmp);
 			if (return_expression_type == INT_EXPERSSION) {
 				this->current_func->setStatus(RETURN_INT);
 			} else {
 				this->current_func->setStatus(RETURN_CHAR);
 			}
 		}
+		midCodeAdd(midCode(midCode::MidCodeInstr::RET, tmp));
 		appendEnd(father, RPARENT);
 	} else {
 		this->current_func->setStatus(RETURN_VOID);
+		midCodeAdd(midCode(midCode::MidCodeInstr::RET, "void"));
 	}
 }
 
 // main void main‘(’‘)’ ‘{’＜复合语句＞‘}’
 void Parser::mainFunctionParser(GrammarNode* father) {
-	// Get into Function: level++
-	this->level++;
 	appendEnd(father, VOIDTK);
 	func* func_res = declareFunctionParser(VOID_FUNC);
 	this->current_func = func_res;
+
+	midCodeAdd(midCode(midCode::MidCodeInstr::FUNC_VOID, "main"));
 
 	appendEnd(father, MAINTK);
 	appendEnd(father, LPARENT);
@@ -563,10 +684,7 @@ void Parser::mainFunctionParser(GrammarNode* father) {
 	}
 
 	appendEnd(father, RBRACE);
-	// Leave the Function: level--
-	this->identifier_table->cleanLevel(this->level);
-	this->level--;
-	this->current_func = NULL;
+	this->current_func = this->_golabl_func;
 }
 
 // ＜声明头部＞   ::=  int＜标识符＞ | char＜标识符＞
@@ -593,9 +711,13 @@ func* Parser::headStateParser(GrammarNode* father) {
 
 // ＜有返回值函数定义＞  ::=  ＜声明头部＞'('＜参数表＞')' '{'＜复合语句＞'}’
 void Parser::returnFunctionParser(GrammarNode* father) {
-	this->level++;
 	GrammarNode* thisNode = appendMidNode(father, HEAD_STATE);
 	this->current_func = headStateParser(thisNode);
+
+	if (this->current_func->type == INT_FUNC)
+		midCodeAdd(midCode(midCode::MidCodeInstr::FUNC_INT, this->current_func->name));
+	else
+		midCodeAdd(midCode(midCode::MidCodeInstr::FUNC_CHAR, this->current_func->name));
 	
 	appendEnd(father, LPARENT);
 	{
@@ -610,30 +732,20 @@ void Parser::returnFunctionParser(GrammarNode* father) {
 	}
 	
 	// check before leave
-	// TODO: 这里太丑了！有时间改一下!
-	if (this->current_func->status == NON_RETURN || this->current_func->status == RETURN_VOID) {
-		this->error_handler->raise_error((*iter).getLineNum()-1, NON_RETURN_IN_RETURN_FUNC);
-	} else if (this->current_func->type == INT_FUNC && this->current_func->status == RETURN_CHAR) {
-		this->error_handler->raise_error((*iter).getLineNum()-1, NON_RETURN_IN_RETURN_FUNC);
-	} else if (this->current_func->type == CHAR_FUNC && this->current_func->status == RETURN_INT) {
-		this->error_handler->raise_error((*iter).getLineNum()-1, NON_RETURN_IN_RETURN_FUNC);
-	}
-	
-	appendEnd(father, RBRACE);
+	// TODO: check
 
-	// Leave the function: level--
-	this->identifier_table->cleanLevel(this->level);
-	this->level--;
-	this->current_func = NULL;
+	appendEnd(father, RBRACE);
+	this->current_func = this->_golabl_func;
 }
 
 // ＜无返回值函数定义＞  ::= void＜标识符＞'('＜参数表＞')''{'＜复合语句＞'}’
 void Parser::noReturnFunctionParser(GrammarNode* father) {
-	this->level++;
 
 	appendEnd(father, VOIDTK);
 	func* func_res = declareFunctionParser(VOID_FUNC);
 	this->current_func = func_res;
+	// Add Mid Code
+	midCodeAdd(midCode(midCode::MidCodeInstr::FUNC_VOID, this->current_func->name));
 
 	if (func_res->type == ILLEGAL_FUNC) {
 		this->error_handler->raise_error((*iter).getLineNum(), REDEFINITION);
@@ -651,15 +763,12 @@ void Parser::noReturnFunctionParser(GrammarNode* father) {
 		compositeStatementParser(thisNode);
 	}
 
-	// check before leave
-	if (this->current_func->status == RETURN_INT || this->current_func->status == RETURN_CHAR) {
-		this->error_handler->raise_error((*iter).getLineNum()-1, RETURN_IN_NON_RETURN_FUNC);
+	if (this->current_func->status == NON_RETURN) {
+		midCodeAdd(midCode(midCode::MidCodeInstr::RET));
 	}
+
 	appendEnd(father, RBRACE);
-	
-	// Leave the function: level--
-	this->identifier_table->cleanLevel(this->level);
-	this->level--;
+
 	this->current_func = NULL;
 }
 
@@ -677,30 +786,37 @@ void Parser::valueParameterTableParser(GrammarNode* father, func* call_function)
 		return;
 	} else {
 		{//	TODO: 这里还是要判断表达式的类型
+			assert(!paramList.empty());
+			Symbol param_type = paramList.front();
+			identifier* tmp;
+			if (param_type == INTTK) tmp = this->current_func->genTempVar(INT_IDENTIFIER);
+			else tmp = this->current_func->genTempVar(CHAR_IDENTIFIER);
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-			Expression_Type param_expression_type = expressionParser(thisNode);
+			Expression_Type param_expression_type = expressionParser(thisNode, tmp);
 			give_param_num++;
-			if (!paramList.empty()) {
-				Symbol param_type = paramList.front();
-				paramList.pop_front();
-				if ((param_type == INTTK && param_expression_type == CHAR_EXPRESSION)
-					|| (param_type == CHARTK && param_expression_type == INT_EXPERSSION)) {
-					this->error_handler->raise_error((*iter).getLineNum(), PARAMETER_TYPE_DONT_MATCH);
-				}
+			paramList.pop_front();
+			midCodeAdd(midCode(midCode::MidCodeInstr::PUSH, tmp, give_param_num));		// PUSH t1
+			if ((param_type == INTTK && param_expression_type == CHAR_EXPRESSION)
+				|| (param_type == CHARTK && param_expression_type == INT_EXPERSSION)) {
+				this->error_handler->raise_error((*iter).getLineNum(), PARAMETER_TYPE_DONT_MATCH);
 			}
+			
 		}
 		while ((*iter).getType() == COMMA) {
+			assert(!paramList.empty());
 			appendEnd(father, COMMA);
+			Symbol param_type = paramList.front();
+			identifier* tmp;
+			if (param_type == INTTK) tmp = this->current_func->genTempVar(INT_IDENTIFIER);
+			else tmp = this->current_func->genTempVar(CHAR_IDENTIFIER);
 			GrammarNode* thisNode = appendMidNode(father, EXPRESSION);
-			Expression_Type param_expression_type = expressionParser(thisNode);
+			Expression_Type param_expression_type = expressionParser(thisNode, tmp);
 			give_param_num++;
-			if (!paramList.empty()) {
-				Symbol param_type = paramList.front();
-				paramList.pop_front();
-				if ((param_type == INTTK && param_expression_type == CHAR_EXPRESSION)
-					|| (param_type == CHARTK && param_expression_type == INT_EXPERSSION)) {
-					this->error_handler->raise_error((*iter).getLineNum(), PARAMETER_TYPE_DONT_MATCH);
-				}
+			paramList.pop_front();
+			midCodeAdd(midCode(midCode::MidCodeInstr::PUSH, tmp, give_param_num));		// PUSH t1
+			if ((param_type == INTTK && param_expression_type == CHAR_EXPRESSION)
+				|| (param_type == CHARTK && param_expression_type == INT_EXPERSSION)) {
+				this->error_handler->raise_error((*iter).getLineNum(), PARAMETER_TYPE_DONT_MATCH);
 			}
 		}
 		if (need_param_num != give_param_num) {
@@ -712,19 +828,21 @@ void Parser::valueParameterTableParser(GrammarNode* father, func* call_function)
 // ＜参数表＞    :: = ＜类型标识符＞＜标识符＞{ ,＜类型标识符＞＜标识符＞ } | ＜空＞
 void Parser::parameterTableParser(GrammarNode* father) {
 	// 如果下一个token是右括号，则可以直接返回
-	
+	int para_index = 0;
 	if ((*iter).getType() == RPARENT) return;
 	else {
 		if ((*iter).getType() == CHARTK) {
+			para_index++;
 			this->current_func->addParam(CHARTK);
 			appendEnd(father, CHARTK);
-			declareIdentifierParser(VAR_IDENTIFIER, CHAR_IDENTIFIER);
+			declareParaIdentifierParser(VAR_IDENTIFIER, CHAR_IDENTIFIER, para_index);
 			appendEnd(father, IDENFR);
 		}
 		else if ((*iter).getType() == INTTK) {
+			para_index++;
 			this->current_func->addParam(INTTK);
 			appendEnd(father, INTTK);
-			declareIdentifierParser(VAR_IDENTIFIER, INT_IDENTIFIER);
+			declareParaIdentifierParser(VAR_IDENTIFIER, INT_IDENTIFIER, para_index);
 			appendEnd(father, IDENFR);
 		} else {
 			// TODO: raise error
@@ -732,15 +850,17 @@ void Parser::parameterTableParser(GrammarNode* father) {
 		while ((*iter).getType() == COMMA) {
 			appendEnd(father, COMMA);
 			if ((*iter).getType() == CHARTK) {
+				para_index++;
 				this->current_func->addParam(CHARTK);
 				appendEnd(father, CHARTK);
-				declareIdentifierParser(VAR_IDENTIFIER, CHAR_IDENTIFIER);
+				declareParaIdentifierParser(VAR_IDENTIFIER, CHAR_IDENTIFIER, para_index);
 				appendEnd(father, IDENFR);
 			}
 			else if ((*iter).getType() == INTTK) {
+				para_index++;
 				this->current_func->addParam(INTTK);
 				appendEnd(father, INTTK);
-				declareIdentifierParser(VAR_IDENTIFIER, INT_IDENTIFIER);
+				declareParaIdentifierParser(VAR_IDENTIFIER, INT_IDENTIFIER, para_index);
 				appendEnd(father, IDENFR);
 			} else {
 				// TODO: raise error
@@ -750,7 +870,7 @@ void Parser::parameterTableParser(GrammarNode* father) {
 }
 
 // ＜有返回值函数调用语句＞ ::= ＜标识符＞'('＜值参数表＞')’
-func* Parser::returnCallStatementParser(GrammarNode* father) {
+func* Parser::returnCallStatementParser(GrammarNode* father, identifier* _tmp) {
 	func* func_res = analyseFunctionParser();
 	appendEnd(father, IDENFR);
 	appendEnd(father, LPARENT);
@@ -759,6 +879,8 @@ func* Parser::returnCallStatementParser(GrammarNode* father) {
 		valueParameterTableParser(thisNode, func_res);
 	}
 	appendEnd(father, RPARENT);
+	midCodeAdd(midCode(midCode::MidCodeInstr::CALL, func_res->name));		// CALL FUNC 
+	if (_tmp) midCodeAdd(midCode(midCode::MidCodeInstr::ASSIGN, _tmp, NULL, NULL, "ret"));	// t0=ret
 	return func_res;
 }
 
@@ -774,6 +896,7 @@ void Parser::noReturnCallStatementParser(GrammarNode* father) {
 		valueParameterTableParser(thisNode, func_res);
 	}
 	appendEnd(father, RPARENT);
+	midCodeAdd(midCode(midCode::MidCodeInstr::CALL, func_res->name));		// CALL FUNC 
 }
 
 //＜语句＞::= ＜条件语句＞｜＜循环语句＞| '{'＜语句列＞'}'| ＜有返回值函数调用语句＞;
@@ -841,7 +964,7 @@ void Parser::statementParser(GrammarNode* father) {
 				noReturnCallStatementParser(thisNode);
 			} else { // return func
 				GrammarNode* thisNode = appendMidNode(father, RETURN_CALL_STATEMENT);
-				returnCallStatementParser(thisNode);
+				returnCallStatementParser(thisNode, NULL);
 			}
 		} else {
 			// identifier
@@ -849,7 +972,6 @@ void Parser::statementParser(GrammarNode* father) {
 			GrammarNode* thisNode = appendMidNode(father, ASSIGN_STATEMENT);
 			assignStatementParser(thisNode);
 		}
-		
 		
 		appendEnd(father, SEMICN);
 		break;
@@ -933,33 +1055,48 @@ void Parser::compositeStatementParser(GrammarNode* father) {
 
 /** Same Level **/
 // Identifier
-void Parser::declareIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type) {
+void Parser::declareParaIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, int num) {
 	string name = (*iter).getStr();
-	identifier result = identifier_table->findIdentifier(name);
-	if (result.kind == ILLEGAL_KIND) {	// Dont have in identifier table now
-		identifier_table->addIdentifier(name, _kind, _type, this->level);
-	} else {
-		this->error_handler->raise_error((*iter).getLineNum(), REDEFINITION);
-	}
-	// appendEnd(father, IDENFR);
+	if (this->current_func != this->_golabl_func)
+		name += this->current_func->name;
+	identifier* result = this->current_func->findIdentifier(name);
+	assert(result->kind == ILLEGAL_KIND);
+	this->current_func->addIdentifier(name, _kind, _type);
+	result = this->current_func->findIdentifier(name);
+	
+	if (_type == INT_IDENTIFIER) 
+		midCodeAdd(midCode(midCode::MidCodeInstr::PARA_INT, result, num));
+	else 
+		midCodeAdd(midCode(midCode::MidCodeInstr::PARA_CHAR, result, num));
 }
 
-identifier Parser::analyseIdentifierParser() {
+identifier* Parser::declareIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type) {
 	string name = (*iter).getStr();
-	identifier result = identifier_table->findIdentifier(name);
-	// TODO: appendEnd(father, IDENFR);
+	if (this->current_func != this->_golabl_func) 
+		name += this->current_func->name;
+	identifier* result = this->current_func->findIdentifier(name);
+	assert(result->kind == ILLEGAL_KIND);
+	this->current_func->addIdentifier(name, _kind, _type);
+	result = this->current_func->findIdentifier(name);
 	return result;
+}
+
+identifier* Parser::analyseIdentifierParser() {
+	string name = (*iter).getStr();
+	string local_name = name;
+	if (this->current_func != this->_golabl_func)
+		local_name += this->current_func->name;
+	identifier* result = this->current_func->findIdentifier(local_name);
+	if (result->kind != ILLEGAL_KIND) return result;
+	else return this->_golabl_func->findIdentifier(name);
 }
 
 // Function
 func* Parser::declareFunctionParser(FUNC_TYPE _type) {
 	string name = (*iter).getStr();
 	func* result = func_table->findFunc(name);
-	if (result->type == ILLEGAL_FUNC) {
-		func_table->addFunc(name, _type);
-	} else {
-		this->error_handler->raise_error((*iter).getLineNum(), REDEFINITION);
-	}
+	if (result->type == ILLEGAL_FUNC) func_table->addFunc(name, _type);
+	else this->error_handler->raise_error((*iter).getLineNum(), REDEFINITION);
 // TODO:	appendEnd(father, IDENFR);
 	return func_table->findFunc(name);
 }
@@ -971,15 +1108,11 @@ func* Parser::analyseFunctionParser() {
 }
 
 
-/*
-void Parser::identifierParser(GrammarNode* father) {
-	// 插入符号表
-	appendEnd(father, IDENFR);
-}
-*/
-
 void Parser::variableIdentifier(GrammarNode* father, IDENTIFIER_TYPE _type) {
-	declareIdentifierParser(VAR_IDENTIFIER, _type);
+	identifier* res = declareIdentifierParser(VAR_IDENTIFIER, _type);
+	if (_type == INT_IDENTIFIER) midCodeAdd(midCode(midCode::MidCodeInstr::VAR_INT, res));
+	else midCodeAdd(midCode(midCode::MidCodeInstr::VAR_CHAR, res));
+
 	appendEnd(father, IDENFR);
 	if ((*iter).getType() == LBRACK) {
 		appendEnd(father, LBRACK);
@@ -1025,4 +1158,8 @@ bool isRelationOperator(Symbol op) {
 	default:
 		return false;
 	}
+}
+
+void Parser::midCodeAdd(midCode _mid_code) {
+	this->current_func->midCodeList.push_back(_mid_code);
 }

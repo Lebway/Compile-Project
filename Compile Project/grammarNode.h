@@ -1,4 +1,4 @@
-#ifndef GRAMMMAR_NODE__H
+﻿#ifndef GRAMMMAR_NODE__H
 #define GRAMMMAR_NODE__H
 
 #include<list>

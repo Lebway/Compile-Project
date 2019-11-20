@@ -1,4 +1,4 @@
-#ifndef ERROR_HANDLER__H
+﻿#ifndef ERROR_HANDLER__H
 #define ERROR_HANDLER__H
 #include "error.h"
 

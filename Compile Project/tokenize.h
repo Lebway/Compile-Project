@@ -1,4 +1,4 @@
-#ifndef TOKENIZE_H
+﻿#ifndef TOKENIZE_H
 #define TOKENIZE_H
 
 #include<string>
@@ -29,6 +29,7 @@ private:
 
 	void read_char();
 	int read_number();
+	void make_dict();
 	void un_read_char(char c);
 	bool isLetter_General(char c);
 	bool isLetter_Special(char c);

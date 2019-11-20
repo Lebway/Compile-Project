@@ -1,56 +1,23 @@
+﻿#include "midCode.h"
 #include <string>
 #include <map>
 #include <list>
 #include "token.h"
+#include "identifier.h"
+#include <vector>
+
 #ifndef SYMBOL_TABLE__H
 #define SYMBOL_TABLE__H
 
 using namespace std;
-
-enum IDENTIFIER_KIND
-{
-	CONST_IDENTIFIER,
-	VAR_IDENTIFIER,
-	ILLEGAL_KIND
-};
-
-enum IDENTIFIER_TYPE
-{
-	INT_IDENTIFIER,
-	CHAR_IDENTIFIER,
-	ILLEGAL_TYPE
-};
-
-class identifier
-{
-public:
-	identifier();
-	identifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, int level);
-	string name;
-	IDENTIFIER_KIND kind;
-	IDENTIFIER_TYPE type;
-	int level;
-private:
-};
-
-class identifierTable
-{
-public:
-	identifierTable();
-	void addIdentifier(identifier _identifier);
-	void addIdentifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, int level);
-	identifier findIdentifier(string _name);
-	void cleanLevel(int _leverl);
-private:
-	map<string,identifier> identifierMap;
-};
 
 enum FUNC_TYPE
 {
 	ILLEGAL_FUNC,
 	VOID_FUNC,
 	INT_FUNC,
-	CHAR_FUNC
+	CHAR_FUNC,
+	GLOBAL_FUNC,
 };
 
 enum FUNC_STATUS
@@ -61,7 +28,7 @@ enum FUNC_STATUS
 	NON_RETURN
 };
 
-class func
+class func 
 {
 public:
 	func();
@@ -70,24 +37,35 @@ public:
 	void addParam(Symbol _symbol);
 	int getParamNum();
 	list<Symbol> getParamList();
+	void addIdentifier(identifier);
+	void addIdentifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type);
+	identifier* genTempVar(IDENTIFIER_TYPE);
+	identifier* genTempConst(IDENTIFIER_TYPE, const int value);
+
+	identifier* findIdentifier(string);
+	int tempIdentifier;
 	string name;
 	FUNC_TYPE type;
 	FUNC_STATUS status;
+	list<midCode> midCodeList;
+	identifierTable identifierTable;
+	map<string, string> strToPrint;
+
 private:
 	int paramNum;
 	list<Symbol> paramList;
 };
 
-class funcTable
+class SymbolTable
 {
 public:
-	funcTable();
 	void addFunc(func _func);
 	void addFunc(string _name, FUNC_TYPE _type);
 	func* findFunc(string _name);
 	void setFuncStatus(string _name, FUNC_STATUS _status);
-private:
-	map<string, func> funcMap;
+	SymbolTable();
+	void midCode_output(ofstream&);
+	list<func> funcTable;
 };
 
 #endif // !SYMBOL_TABLE__H
