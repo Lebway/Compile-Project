@@ -1,4 +1,4 @@
-﻿#include "objCode.h"
+#include "objCode.h"
 
 objCode::objCode(Instr _instr, Reg _t0, Reg _t1, Reg _t2, int _mem, std::string _str) {
 	this->instr = _instr;
@@ -21,19 +21,36 @@ void objCode::output(ofstream& output_file) {
 		output_file << "sub " << reg2string(t0) << " " << reg2string(t1) << " " << reg2string(t2) << endl;
 		break;
 	case(Instr::subi):
-		output_file << "subi " << reg2string(t0) << " " << reg2string(t1) << " " << value << endl;
+		output_file << "addi " << reg2string(t0) << " " << reg2string(t1) << " " << -1 * value << endl;
 		break;
 	case(Instr::mul):
 		output_file << "mul " << reg2string(t0) << " " << reg2string(t1) << " " << reg2string(t2) << endl;
 		break;
 	case(Instr::div):
-		output_file << "div " << reg2string(t0) << " " << reg2string(t1) << " " << reg2string(t2) << endl;
+		output_file << "div " << reg2string(t1) << " " << reg2string(t2) << endl;
+		output_file << "mflo " << reg2string(t0) << endl;
 		break;
 	case(Instr::lw):
-		output_file << "lw " << reg2string(t0) << " " << label << "(" << reg2string(t1) << ")" << endl;
+		if (value != 0) {
+			output_file << "lw " << reg2string(t0) << " " << value << "(" << reg2string(t1) << ")" << endl;
+		} else {
+			if (t1 == Reg::zero) {
+				output_file << "lw " << reg2string(t0) << " " << label << endl;
+			} else {
+				output_file << "lw " << reg2string(t0) << " " << label << "(" << reg2string(t1) << ")" << endl;
+			}
+		}
 		break;
 	case(Instr::sw) :
-		output_file << "sw " << reg2string(t0) << " " << label << "(" << reg2string(t1) << ")" << endl;
+		if (value != 0) {
+			output_file << "sw " << reg2string(t0) << " " << value << "(" << reg2string(t1) << ")" << endl;
+		} else {
+			if (t1 == Reg::zero) {
+				output_file << "sw " << reg2string(t0) << " " << label << endl;
+			} else {
+				output_file << "sw " << reg2string(t0) << " " << label << "(" << reg2string(t1) << ")" << endl;
+			}
+		}
 		break;
 	case(Instr::bgt):
 		output_file << "bgt " << reg2string(t0) << " " << reg2string(t1) << " " << label << endl;

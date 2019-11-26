@@ -1,4 +1,4 @@
-﻿#include"test.h"
+#include"test.h"
 #include"parser.h"
 #include"tokenize.h"
 #include"error_handler.h"

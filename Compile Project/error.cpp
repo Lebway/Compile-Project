@@ -1,4 +1,4 @@
-﻿#include "error.h"
+#include "error.h"
 #include <string>
 using namespace std;
 

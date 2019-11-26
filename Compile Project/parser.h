@@ -1,4 +1,4 @@
-﻿#ifndef PARSER__H
+#ifndef PARSER__H
 #define PARSER__H
 
 #include"tokenize.h"
@@ -31,7 +31,7 @@ private:
 	Error_handler* error_handler;
 	SymbolTable* func_table;
 	func* current_func;
-	func* _golabl_func;
+	func* _global_func;
 	
 	void appendEnd(GrammarNode* father);
 	void appendEnd(GrammarNode* father, Symbol token_type);
@@ -42,9 +42,9 @@ private:
 	void variableDeclareParser(GrammarNode* father);
 	void variableDefineParser(GrammarNode* father);
 
-	Expression_Type expressionParser(GrammarNode* father, identifier*);
-	Expression_Type itemParser(GrammarNode* father, identifier*);
-	Expression_Type factorParser(GrammarNode* father, identifier*);
+	Expression_Type expressionParser(GrammarNode* father, identifier**);
+	Expression_Type itemParser(GrammarNode* father, identifier**);
+	Expression_Type factorParser(GrammarNode* father, identifier**);
 
 	int integerParser(GrammarNode* father);
 	int unsignIntParser(GrammarNode* father);
@@ -79,13 +79,16 @@ private:
 	void programParser(GrammarNode* father);
 
 	identifier* declareIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type);
-	void declareParaIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, int);
+	void declareParaIdentifierParser(IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, string _name);
+
 	identifier* analyseIdentifierParser();
 	func* declareFunctionParser(FUNC_TYPE _type);
 	func* analyseFunctionParser();
 
 	void printTree(GrammarNode* father);
 	void midCodeAdd(midCode _mid_code);
+	identifier* getTempVar(IDENTIFIER_TYPE _type);
+	identifier* genTempConst(IDENTIFIER_TYPE _type, int value);
 };
 
 bool isRelationOperator(Symbol op);

@@ -1,4 +1,4 @@
-﻿#ifndef REG__H
+#ifndef REG__H
 #define REG__H
 
 enum class Reg {

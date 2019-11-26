@@ -1,4 +1,4 @@
-﻿#ifndef MID_CODE__H
+#ifndef MID_CODE__H
 #define MID_CODE__H
 
 #include <string>
@@ -46,6 +46,8 @@ public:
 		FUNC_CHAR,
 		PARA_INT,
 		PARA_CHAR,
+		SAVE_REG,
+		RECOVER_REG,
 		CONST_INT,
 		CONST_CHAR,
 
@@ -64,8 +66,7 @@ public:
 		identifier* t2=NULL, std::string _str="", int _value=0);
 	/*midCode(MidCodeInstr _instr, identifier* rd, identifier* rs);
 	midCode(MidCodeInstr _instr, identifier* rd);*/
-	midCode(MidCodeInstr _instr, identifier* , int);
-	midCode(MidCodeInstr _instr, identifier*, int, string);
+	midCode(MidCodeInstr _instr, identifier*, int, string _str="");
 	midCode(MidCodeInstr _instr, identifier*, std::string);
 	midCode(MidCodeInstr _instr, identifier*, identifier*, int);
 	midCode(MidCodeInstr _instr, std::string _str);

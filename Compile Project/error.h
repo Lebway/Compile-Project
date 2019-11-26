@@ -1,4 +1,4 @@
-﻿#ifndef ERROR__H
+#ifndef ERROR__H
 #define ERROR__H
 #include<string>
 using namespace std;

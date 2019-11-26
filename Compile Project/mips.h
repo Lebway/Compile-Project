@@ -1,4 +1,4 @@
-﻿#ifndef MIPS__H
+#ifndef MIPS__H
 #define MIPS__H
 #include <list>
 #include "reg.h"
@@ -52,11 +52,14 @@ private:
 	void toMips_func_char(midCode*, func*);
 	void toMips_para_int(midCode*, func*);
 	void toMips_para_char(midCode*, func*);
+	void toMips_save_reg(midCode*, func*);
+	void toMips_recover_reg(midCode*, func*);
 	
 	void genBigSpace(func*);
 	void loadIdentifier(identifier*, func*, Reg);
 	void storeIdentifier(identifier*, func*, Reg);
 	int isTmp(identifier* id);
+	string change_backslash(string ori);
 };
 
 #endif // !MIPS__H

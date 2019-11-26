@@ -1,4 +1,4 @@
-﻿#include "error_handler.h"
+#include "error_handler.h"
 #include "error.h"
 using namespace std;
 

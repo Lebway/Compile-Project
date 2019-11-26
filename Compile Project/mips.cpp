@@ -1,4 +1,4 @@
-﻿#include "mips.h"
+#include "mips.h"
 #include "objCode.h"
 
 #define NOVALUE 0
@@ -91,13 +91,23 @@ Mips::Mips(SymbolTable* _symbol_table) {
 
 void Mips::mipsGen() {
 	list<func>::iterator func_iter;
-	list<midCode>::iterator midCode_iter;
+	bool have_jump_main_flag = false;
 	for (func_iter = symbol_table->funcTable.begin(); func_iter!=symbol_table->funcTable.end(); func_iter++) {
 		func this_func = *func_iter;
 		// 在每个函数的头部， 开辟比较大的空间来存储所有的局部变量
 		// 然后每条指令 读取内存 进行计算 输出结果 存回内存
-		genBigSpace(&this_func);
-		for (midCode_iter = this_func.midCodeList.begin(); midCode_iter != this_func.midCodeList.end(); midCode_iter++) {
+		auto midCode_iter = this_func.midCodeList.begin();
+		if (this_func.name == "_global_func") {
+			genBigSpace(&this_func);
+		} else {
+			if (!have_jump_main_flag) {
+				have_jump_main_flag = true;
+				this->mipsCode.push_back(objCode(objCode::Instr::j, Reg::zero, Reg::zero, Reg::zero, NOVALUE, "main"));
+			}
+			this_func.setOffset();
+		}
+
+		for (; midCode_iter != this_func.midCodeList.end(); midCode_iter++) {
 			midCode this_midCode = *midCode_iter;
 			switch (this_midCode.instr) {
 			case(midCode::MidCodeInstr::JUMP):
@@ -164,6 +174,10 @@ void Mips::mipsGen() {
 				toMips_para_int(&this_midCode, &this_func); break;
 			case(midCode::MidCodeInstr::PARA_CHAR):
 				toMips_para_char(&this_midCode, &this_func); break;
+			case(midCode::MidCodeInstr::SAVE_REG) :
+				toMips_save_reg(&this_midCode, &this_func); break;
+			case(midCode::MidCodeInstr::RECOVER_REG):
+				toMips_recover_reg(&this_midCode, &this_func); break;
 			default:
 				break;
 			}
@@ -182,40 +196,32 @@ void Mips::toMips_label(midCode* code, func* this_func) {
 void Mips::toMips_ret(midCode* code, func* this_func) {
 	// TODO: recover the reg before leave
 	if (this_func->name == "main") return;
-	if (code->t0 == NULL) this->mipsCode.push_back(objCode(objCode::Instr::jr, Reg::ra, Reg::zero, Reg::zero, NOVALUE, ""));
-	else {
+	if (code->t0 != NULL) {
 		// move to v0
-		if (isTmp(code->t0)) {
-			// li $t0, tmp*4
-			this->mipsCode.push_back(objCode(objCode::Instr::li, Reg::t0, Reg::zero, Reg::zero, isTmp(code->t0)*4, ""));
-			// lw $v0, label($t0)
-			this->mipsCode.push_back(objCode(objCode::Instr::lw, Reg::v0, Reg::t0, Reg::zero, NOVALUE, this_func->name + "_tmp"));
-		} else {
-			// lw $v0, variable
-			this->mipsCode.push_back(objCode(objCode::Instr::lw, Reg::v0, Reg::zero, Reg::zero, NOVALUE, code->t0->name));
-		}
-		// recover ra
-		toMips_pop_reg(Reg::ra);
-		// return 
-		this->mipsCode.push_back(objCode(objCode::Instr::jr, Reg::ra, Reg::zero, Reg::zero, NOVALUE, ""));
+		loadIdentifier(code->t0, this_func, Reg::v0);
 	}
+	// return 
+	this->mipsCode.push_back(objCode(objCode::Instr::jr, Reg::ra, Reg::zero, Reg::zero, NOVALUE, ""));
 }
 
 void Mips::loadIdentifier(identifier* id, func* this_func, Reg reg) {
+	// TODO: change here
 	if (isTmp(id)) {
-		this->mipsCode.push_back(objCode(objCode::Instr::li, Reg::t1, Reg::zero, Reg::zero, isTmp(id) * 4, ""));
-		this->mipsCode.push_back(objCode(objCode::Instr::lw, reg, Reg::t1, Reg::zero, NOVALUE, this_func->name + "_tmp"));
-	} else {
+		this->mipsCode.push_back(objCode(objCode::Instr::lw, reg, Reg::fp, Reg::zero, id->offset, ""));
+	} else if (id->location == GLOBAL_LOCATION) {
 		this->mipsCode.push_back(objCode(objCode::Instr::lw, reg, Reg::zero, Reg::zero, NOVALUE, id->name));
+	} else {
+		this->mipsCode.push_back(objCode(objCode::Instr::lw, reg, Reg::fp, Reg::zero, id->offset, ""));
 	}
 }
 
 void Mips::storeIdentifier(identifier* id, func* this_func, Reg reg) {
 	if (isTmp(id)) {
-		this->mipsCode.push_back(objCode(objCode::Instr::li, Reg::t1, Reg::zero, Reg::zero, isTmp(id) * 4, ""));
-		this->mipsCode.push_back(objCode(objCode::Instr::sw, reg, Reg::t1, Reg::zero, NOVALUE, this_func->name + "_tmp"));
-	} else {
+		this->mipsCode.push_back(objCode(objCode::Instr::sw, reg, Reg::fp, Reg::zero, id->offset, ""));
+	} else if (id->location == GLOBAL_LOCATION) {
 		this->mipsCode.push_back(objCode(objCode::Instr::sw, reg, Reg::zero, Reg::zero, NOVALUE, id->name));
+	} else {
+		this->mipsCode.push_back(objCode(objCode::Instr::sw, reg, Reg::fp, Reg::zero, id->offset, ""));
 	}
 }
 
@@ -254,7 +260,7 @@ void Mips::toMips_subi(midCode* code, func* this_func) {
 	// load s1
 	loadIdentifier(code->t1, this_func, Reg::s1);
 	// subi $t0 $t1 100
-	this->mipsCode.push_back(objCode(objCode::Instr::subi, Reg::s0, Reg::s1, Reg::zero, code->value, ""));
+	this->mipsCode.push_back(objCode(objCode::Instr::addi, Reg::s0, Reg::s1, Reg::zero,-1* code->value, ""));
 	// store s0
 	storeIdentifier(code->t0, this_func, Reg::s0);
 }
@@ -296,7 +302,13 @@ void Mips::toMips_loadInd(midCode* code, func* this_func) {
 	// sll s2 s2 2
 	this->mipsCode.push_back(objCode(objCode::Instr::sll, Reg::s2, Reg::s2, Reg::zero, 2, ""));
 	// lw s0, t1.name[s2]
-	this->mipsCode.push_back(objCode(objCode::Instr::lw, Reg::s0, Reg::s2, Reg::zero, NOVALUE, code->t1->name));
+	if (code->t1->location == GLOBAL_LOCATION) {
+		this->mipsCode.push_back(objCode(objCode::Instr::lw, Reg::s0, Reg::s2, Reg::zero, NOVALUE, code->t1->name));
+	} else {
+		int offset = code->t1->offset;
+		this->mipsCode.push_back(objCode(objCode::Instr::add, Reg::t0, Reg::fp, Reg::s2, NOVALUE, ""));
+		this->mipsCode.push_back(objCode(objCode::Instr::lw, Reg::s0, Reg::t0, Reg::zero, offset, ""));
+	}
 	// store s0
 	storeIdentifier(code->t0, this_func, Reg::s0);
 }
@@ -309,7 +321,13 @@ void Mips::toMips_storeInd(midCode* code, func* this_func) {
 	// sll t1 t1 2
 	this->mipsCode.push_back(objCode(objCode::Instr::sll, Reg::s1, Reg::s1, Reg::zero, 2, ""));
 	// sw s2 to t0.name[s1]
-	this->mipsCode.push_back(objCode(objCode::Instr::sw, Reg::s2, Reg::s1, Reg::zero, NOVALUE, code->t0->name));
+	if (code->t0->location == GLOBAL_LOCATION) {
+		this->mipsCode.push_back(objCode(objCode::Instr::sw, Reg::s2, Reg::s1, Reg::zero, NOVALUE, code->t0->name));
+	} else {
+		int offset = code->t0->offset;
+		this->mipsCode.push_back(objCode(objCode::Instr::add, Reg::t0, Reg::fp, Reg::s1, NOVALUE, ""));
+		this->mipsCode.push_back(objCode(objCode::Instr::sw, Reg::s2, Reg::t0, Reg::zero, offset, ""));
+	}
 }
 
 void Mips::toMips_assign(midCode* code, func* this_func) {
@@ -340,8 +358,19 @@ void Mips::toMips_assign_char(midCode* code, func* this_func) {
 
 // TODO: 函数这里还需要改
 void Mips::toMips_call(midCode* code, func* this_func) {
+	toMips_push_reg(Reg::ra);
+	toMips_push_reg(Reg::fp);
+	func* target_func = this->symbol_table->findFunc(code->label);
+	this_func->pushNum = this_func->pushNum - target_func->getParamNum();
+	this->mipsCode.push_back(objCode(objCode::Instr::addi, Reg::fp, Reg::fp, Reg::zero, 
+		this_func->getOffsetSum() + this_func->pushNum * 4, ""));
+
 	// call function ----> jump to the funciton 
 	this->mipsCode.push_back(objCode(objCode::Instr::jal, Reg::zero, Reg::zero, Reg::zero, NOVALUE, code->label));
+	// TODO: 储存寄存器
+
+	toMips_pop_reg(Reg::fp);
+	toMips_pop_reg(Reg::ra);
 }
 
 void Mips::toMips_bgt(midCode* code, func* this_func) {
@@ -478,84 +507,96 @@ void Mips::toMips_pop_reg(Reg reg) {
 void Mips::toMips_push(midCode* code, func* this_func) {
 	// get identifier
 	loadIdentifier(code->t0, this_func, Reg::s0);
-	if (code->value == 1) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::a0, Reg::s0, Reg::zero, NOVALUE, ""));
-	else if (code->value == 2) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::a1, Reg::s0, Reg::zero, NOVALUE, ""));
-	else if (code->value == 3) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::a2, Reg::s0, Reg::zero, NOVALUE, ""));
-	else if (code->value == 4) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::a3, Reg::s0, Reg::zero, NOVALUE, ""));
-	else toMips_push_reg(Reg::s0);
+	// if (code->value == 1) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::a0, Reg::s0, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 2) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::a1, Reg::s0, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 3) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::a2, Reg::s0, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 4) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::a3, Reg::s0, Reg::zero, NOVALUE, ""));
+	// else 
+	// 	toMips_push_reg(Reg::s0);
+	
+	// TODO: 存到FP里面
+	this_func->pushNum++;
+	this->mipsCode.push_back(objCode(objCode::Instr::sw, Reg::s0, Reg::fp, Reg::zero, this_func->pushNum * 4 + this_func->getOffsetSum(), ""));
 	// sw $ra, 0($sp)
 	// addi $sp, $sp, -4
 }
 
 void Mips::toMips_func_void(midCode* code, func* this_func) {
-	// this->mipsCode.push_back(objCode(objCode::Instr::j, Reg::zero, Reg::zero, Reg::zero, NOVALUE, "main"));
 	// set the label
 	this->mipsCode.push_back(objCode(objCode::Instr::label, Reg::zero, Reg::zero, Reg::zero, NOVALUE, this_func->name));
-	// save the ra
-	toMips_push_reg(Reg::ra);
-	// TODO:save the reg
 }
 
 void Mips::toMips_func_int(midCode* code, func* this_func) {
-	this->mipsCode.push_back(objCode(objCode::Instr::j, Reg::zero, Reg::zero, Reg::zero, NOVALUE, "main"));
 	// set the label
 	this->mipsCode.push_back(objCode(objCode::Instr::label, Reg::zero, Reg::zero, Reg::zero, NOVALUE, this_func->name));
-	// save the ra
-	toMips_push_reg(Reg::ra);
-	// TODO:save the reg
 }
 
 void Mips::toMips_func_char(midCode* code, func* this_func) {
-	this->mipsCode.push_back(objCode(objCode::Instr::j, Reg::zero, Reg::zero, Reg::zero, NOVALUE, "main"));
 	// set the label
 	this->mipsCode.push_back(objCode(objCode::Instr::label, Reg::zero, Reg::zero, Reg::zero, NOVALUE, this_func->name));
+}
+
+void Mips::toMips_save_reg(midCode* code, func* this_func) {
 	// save the ra
 	toMips_push_reg(Reg::ra);
+	toMips_push_reg(Reg::fp);
 	// TODO:save the reg
+	// get a large mem for the identifiers
+	// this->mipsCode.push_back(objCode(objCode::Instr::addi, Reg::fp, Reg::fp, Reg::zero, -1 * this_func->getOffsetSum(), ""));
+}
+
+void Mips::toMips_recover_reg(midCode* code, func* this_func) {
+	// recover the Sp
+	// this->mipsCode.push_back(objCode(objCode::Instr::addi, Reg::sp, Reg::sp, Reg::zero, this_func->getOffsetSum(), ""));
+	// TODO: recover the register
+	// recover ra
+	toMips_pop_reg(Reg::fp);
+	toMips_pop_reg(Reg::ra);
 }
 
 void Mips::toMips_para_int(midCode* code, func* this_func) {
-	if (code->value == 1) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a0, Reg::zero, NOVALUE, ""));
-	else if (code->value == 2) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a1, Reg::zero, NOVALUE, ""));
-	else if (code->value == 3) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a2, Reg::zero, NOVALUE, ""));
-	else if (code->value == 4) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a3, Reg::zero, NOVALUE, ""));
-	else toMips_pop_reg(Reg::s0);
-
-	storeIdentifier(code->t0, this_func, Reg::s0);
+	// if (code->value == 1) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a0, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 2) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a1, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 3) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a2, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 4) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a3, Reg::zero, NOVALUE, ""));
+	// else 
+	// this->mipsCode.push_back(objCode(objCode::Instr::lw, Reg::s0, Reg::fp, Reg::zero, code->value * 4, ""));
+	// toMips_pop_reg(Reg::s0);
+	// storeIdentifier(code->t0, this_func, Reg::s0);
 }
 
 void Mips::toMips_para_char(midCode* code, func* this_func) {
-	if (code->value == 1) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a0, Reg::zero, NOVALUE, ""));
-	else if (code->value == 2) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a1, Reg::zero, NOVALUE, ""));
-	else if (code->value == 3) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a2, Reg::zero, NOVALUE, ""));
-	else if (code->value == 4) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a3, Reg::zero, NOVALUE, ""));
-	else toMips_pop_reg(Reg::s0);
+	// if (code->value == 1) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a0, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 2) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a1, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 3) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a2, Reg::zero, NOVALUE, ""));
+	// else if (code->value == 4) this->mipsCode.push_back(objCode(objCode::Instr::move, Reg::s0, Reg::a3, Reg::zero, NOVALUE, ""));
+	// else 
+	// toMips_pop_reg(Reg::s0);
 
-	storeIdentifier(code->t0, this_func, Reg::s0);
+	// storeIdentifier(code->t0, this_func, Reg::s0);
 }
 
 void Mips::genBigSpace(func* this_func) {
 	this->mipsCode.push_back(objCode(objCode::Instr::data, Reg::zero, Reg::zero, Reg::zero, 0, ".data"));
-	// space for temp identifier
-	this->mipsCode.push_back(objCode(
-		objCode::Instr::data_identifier, Reg::zero, Reg::zero, Reg::zero, (this_func->tempIdentifier+10) * 4, this_func->name + "_tmp"));
-	// TODO: space for array
-	map<string, identifier>::iterator identifier_iter;
-	for (identifier_iter = this_func->identifierTable.identifierMap.begin();
-		identifier_iter != this_func->identifierTable.identifierMap.end();
+	for (auto identifier_iter = this_func->identifierTable.identifierList.begin();
+		identifier_iter != this_func->identifierTable.identifierList.end();
 		identifier_iter++) {
-		// TODO: 解决重名问题
-		if ((*identifier_iter).second.kind == ARRAY_IDENTIFIER)
-			this->mipsCode.push_back(objCode(objCode::Instr::data_identifier, Reg::zero, Reg::zero, Reg::zero, ((*identifier_iter).second.array_lenth+5) * 4, (*identifier_iter).second.name));
-		else   // TODO: change here !
-			this->mipsCode.push_back(objCode(objCode::Instr::data_identifier, Reg::zero, Reg::zero, Reg::zero, 4, (*identifier_iter).second.name));
+		identifier* this_identifier = (*identifier_iter);
+		if (this_identifier->kind == ARRAY_IDENTIFIER) {
+			this->mipsCode.push_back(objCode(objCode::Instr::data_identifier, Reg::zero, Reg::zero, Reg::zero, 
+				(this_identifier->array_lenth + 5) * sizeof(int), this_identifier->name));
+		} else   // TODO: change here !
+			this->mipsCode.push_back(objCode(objCode::Instr::data_identifier, Reg::zero, Reg::zero, Reg::zero, 4, this_identifier->name));
 	}
-	for (auto string_iter = this_func->strToPrint.begin(); string_iter != this_func->strToPrint.end(); string_iter++) {
-		string declare_str = string_iter->first + ": .asciiz " + "\"" + string_iter->second + "\"";
+	for (auto string_iter = this->symbol_table->strToPrint.begin(); string_iter != this->symbol_table->strToPrint.end(); string_iter++) {
+		string declare_str = string_iter->first + ": .asciiz " + "\"" + change_backslash(string_iter->second) + "\"";
 		this->mipsCode.push_back(objCode(objCode::Instr::data_string, Reg::zero, Reg::zero, Reg::zero, NOVALUE, declare_str));
 	}
 	this->mipsCode.push_back(objCode(objCode::Instr::data_align, Reg::zero, Reg::zero, Reg::zero, 4, ""));
-	this->mipsCode.push_back(objCode(objCode::Instr::text, Reg::zero, Reg::zero, Reg::zero, NOVALUE, ""));
+	this->mipsCode.push_back(objCode(objCode::Instr::data_identifier, Reg::zero, Reg::zero, Reg::zero, 4, "fp"));
+
+	this->mipsCode.push_back(objCode(objCode::Instr::text, Reg::zero, Reg::zero, Reg::zero, NOVALUE, ".text"));
+	this->mipsCode.push_back(objCode(objCode::Instr::la, Reg::fp, Reg::zero, Reg::zero, NOVALUE, "fp"));
 }
 
 int Mips::isTmp(identifier* id) {
@@ -575,4 +616,18 @@ void Mips::output(ofstream& output_file) {
 		(*iter).output(output_file);
 	}
 }
+
+string Mips::change_backslash(string ori) {
+	string res;
+	for (auto iter = ori.begin(); iter != ori.end(); iter++) {
+		if ((*iter) == '\\') {
+			res.append(1, '\\');
+		}
+		res.append(1, *iter);
+	}
+	return res;
+}
+
+
+// TODO: 计算偏移值here
 

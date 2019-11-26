@@ -1,4 +1,4 @@
-﻿#ifndef TOKENIZE_H
+#ifndef TOKENIZE_H
 #define TOKENIZE_H
 
 #include<string>

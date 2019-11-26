@@ -1,4 +1,4 @@
-﻿#include "midCode.h"
+#include "midCode.h"
 #include <string>
 #include <map>
 #include <list>
@@ -37,24 +37,30 @@ public:
 	void addParam(Symbol _symbol);
 	int getParamNum();
 	list<Symbol> getParamList();
-	void addIdentifier(identifier);
-	void addIdentifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type);
-	identifier* genTempVar(IDENTIFIER_TYPE);
-	identifier* genTempConst(IDENTIFIER_TYPE, const int value);
+	// identifier* addIdentifier(identifier);
+	identifier* addIdentifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, 
+		int _value=0 , IDENTIFIER_LOCATION _loc=ERROR_LOCATION);
+	identifier* genTempVar(IDENTIFIER_TYPE, IDENTIFIER_LOCATION _loc);
+	identifier* genTempConst(IDENTIFIER_TYPE, const int value, IDENTIFIER_LOCATION _loc);
+	int setOffset();
+	int getOffsetSum();
 
 	identifier* findIdentifier(string);
-	int tempIdentifier;
 	string name;
 	FUNC_TYPE type;
 	FUNC_STATUS status;
 	list<midCode> midCodeList;
 	identifierTable identifierTable;
-	map<string, string> strToPrint;
+	int pushNum;
 
 private:
 	int paramNum;
+	int offsetSum;
 	list<Symbol> paramList;
 };
+
+
+// Symbol Table
 
 class SymbolTable
 {
@@ -66,6 +72,8 @@ public:
 	SymbolTable();
 	void midCode_output(ofstream&);
 	list<func> funcTable;
+	func* _global_function;
+	map<string, string> strToPrint;
 };
 
 #endif // !SYMBOL_TABLE__H

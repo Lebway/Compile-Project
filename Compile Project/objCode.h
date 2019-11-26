@@ -1,4 +1,4 @@
-﻿#ifndef OBJCODE__H
+#ifndef OBJCODE__H
 #define OBJCODE__H
 #include <list>
 #include "reg.h"

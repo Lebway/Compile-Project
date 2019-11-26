@@ -1,57 +1,6 @@
-﻿#include "symbolTable.h"
+#include "symbolTable.h"
 #include "identifier.h"
-
-// Identifier
-identifier::identifier()
-{
-	this->name = "";
-	this->kind = ILLEGAL_KIND;
-	this->type = ILLEGAL_TYPE;
-}
-
-identifier::identifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type)
-{
-	this->name = _name;
-	this->kind = _kind;
-	this->type = _type;
-}
-
-identifier::identifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, int _value)
-{
-	this->name = _name;
-	this->kind = _kind;
-	this->type = _type;
-	this->value = _value;
-}
-
-// Identifier Table
-
-identifierTable::identifierTable()
-{
-
-}
-
-void identifierTable::addIdentifier(identifier _identifier)
-{
-	// TODO: 重名元素会忽略!!!
-	this->identifierMap.insert(pair<string, identifier>(_identifier.name, _identifier));
-}
-
-void identifierTable::addIdentifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type)
-{
-	// TODO: 重名元素会忽略!!!
-	this->identifierMap.insert(pair<string, identifier>(_name, identifier(_name,_kind,_type)));
-}
-
-identifier* identifierTable::findIdentifier(string _name) {
-	map<string, identifier>::iterator iter;
-	iter = identifierMap.find(_name);
-	if (iter == identifierMap.end()) {
-		return new identifier();
-	} else {
-		return & iter->second;
-	}
-}
+#include <cassert>
 
 // Function
 
@@ -60,7 +9,7 @@ func::func() {
 	this->status = NON_RETURN;
 	this->type = ILLEGAL_FUNC;
 	this->paramNum = 0;
-	this->tempIdentifier = 0;
+	this->pushNum = 0;
 }
 
 func::func(string _name, FUNC_TYPE _type) {
@@ -68,7 +17,7 @@ func::func(string _name, FUNC_TYPE _type) {
 	this->type = _type;
 	this->status = NON_RETURN;
 	this->paramNum = 0;
-	this->tempIdentifier = 0;
+	this->pushNum = 0;
 }
 
 void func::setStatus(FUNC_STATUS _status) {
@@ -92,31 +41,48 @@ list<Symbol> func::getParamList() {
 	return this->paramList;
 }
 
-void func::addIdentifier(identifier _identifier) {
-	this->identifierTable.addIdentifier(_identifier);
-}
-
-void func::addIdentifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type) {
-	this->identifierTable.addIdentifier(_name, _kind, _type);
+identifier* func::addIdentifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, 
+	int _value, IDENTIFIER_LOCATION _loc) {
+	assert(_loc != ERROR_LOCATION);
+	return this->identifierTable.addIdentifier(_name, _kind, _type, _value, _loc);
 }
 
 identifier* func::findIdentifier(string _name) {
 	return this->identifierTable.findIdentifier(_name);
 }
 
-identifier* func::genTempConst(IDENTIFIER_TYPE _type, const int _value) {
+identifier* func::genTempConst(IDENTIFIER_TYPE _type, const int _value, IDENTIFIER_LOCATION _loc) {
 	string name = to_string(_value);
 	if (this->identifierTable.findIdentifier(name)->kind == ILLEGAL_KIND) {
-		this->identifierTable.addIdentifier(
-			identifier(name, CONST_IDENTIFIER, _type, _value));
+		this->identifierTable.addIdentifier(name, CONST_IDENTIFIER, _type, _value, _loc);
 	}
 	return this->identifierTable.findIdentifier(name);
 }
 
-identifier* func::genTempVar(IDENTIFIER_TYPE _type) {
+identifier* func::genTempVar(IDENTIFIER_TYPE _type, IDENTIFIER_LOCATION _loc) {
 	static int counter = 1;
-	this->tempIdentifier = counter;
-	return new identifier("#" + to_string(counter++), VAR_IDENTIFIER, _type);
+	int index;
+	return this->addIdentifier("#"+to_string(counter++), VAR_IDENTIFIER, _type, 0, _loc);
+}
+
+int func::setOffset() {
+	int offset = 4;
+	for (auto identifier_iter = identifierTable.identifierList.begin();
+		identifier_iter != identifierTable.identifierList.end(); identifier_iter++) {
+		(*identifier_iter)->setOffset(offset);
+		if ((*identifier_iter)->kind == ARRAY_IDENTIFIER) {
+			offset += (*identifier_iter)->array_lenth * 4;
+		} else {
+			offset += 4;
+		}
+	}
+	this->offsetSum = offset;
+	return offset;
+}
+
+int func::getOffsetSum() {
+	setOffset();
+	return this->offsetSum;
 }
 
 // Function Table

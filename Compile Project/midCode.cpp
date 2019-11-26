@@ -1,4 +1,4 @@
-﻿#include "midCode.h"
+#include "midCode.h"
 #include "parser.h"
 #include <cassert>
 
@@ -11,12 +11,12 @@ midCode::midCode(MidCodeInstr _instr, identifier* t0, identifier* t1, identifier
 	this->value = _value;
 }
 
-midCode::midCode(MidCodeInstr _instr, identifier* t0, int _value) {
+midCode::midCode(MidCodeInstr _instr, identifier* t0, int _value, string str) {
 	this->instr = _instr;
 	this->t0 = t0;
 	this->t1 = NULL;
 	this->t2 = NULL;
-	this->label = "";
+	this->label = str;
 	this->value = _value;
 }
 
@@ -47,15 +47,6 @@ midCode::midCode(MidCodeInstr _instr, std::string _str) {
 	this->value = 0;
 }
 
-midCode::midCode(MidCodeInstr _instr, identifier* t0, int _value, string str) {
-	this->instr = _instr;
-	this->t0 = t0;
-	this->t1 = NULL;
-	this->t2 = NULL;
-	this->label = str;
-	this->value = _value;
-}
-
 midCode::midCode(MidCodeInstr _instr, int _value, std::string _str) {
 	this->instr = _instr;
 	this->t0 = NULL;
@@ -64,8 +55,6 @@ midCode::midCode(MidCodeInstr _instr, int _value, std::string _str) {
 	this->label = _str;
 	this->value = _value;
 }
-
-
 
 
 std::string midCode::genLabel() {
