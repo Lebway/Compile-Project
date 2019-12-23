@@ -1,4 +1,4 @@
-#include "objCode.h"
+﻿#include "objCode.h"
 
 objCode::objCode(Instr _instr, Reg _t0, Reg _t1, Reg _t2, int _mem, std::string _str) {
 	this->instr = _instr;
@@ -29,6 +29,10 @@ void objCode::output(ofstream& output_file) {
 	case(Instr::div):
 		output_file << "div " << reg2string(t1) << " " << reg2string(t2) << endl;
 		output_file << "mflo " << reg2string(t0) << endl;
+		break;
+	case(Instr::mod):
+		output_file << "div " << reg2string(t1) << " " << reg2string(t2) << endl;
+		output_file << "mfhi " << reg2string(t0) << endl;
 		break;
 	case(Instr::lw):
 		if (value != 0) {
@@ -175,6 +179,10 @@ string objCode::reg2string(Reg reg) {
 		return "$t8";
 	case Reg::t9:
 		return "$t9";
+	case Reg::k1:
+		return "$k1";
+	case Reg::k0:
+		return "$k0";
 	case Reg::gp:
 		return "$gp";
 	case Reg::sp:
@@ -188,26 +196,3 @@ string objCode::reg2string(Reg reg) {
 	}
 	return "";
 }
-
-
-
-
-/*
-string removeSpace(string _str) {
-	while (1) {
-		size_t pos = _str.find(" ");
-		if (pos == string::npos) break;
-		_str.erase(pos, 1);
-	}
-	while (1) {
-		size_t pos = _str.find("\t");
-		if (pos == string::npos) break;
-		_str.erase(pos, 1);
-	}
-	while (1) {
-		size_t pos = _str.find("\n");
-		if (pos == string::npos) break;
-		_str.erase(pos, 1);
-	}
-	return "_"+_str;
-}*/

@@ -14,28 +14,34 @@ public:
 		ADDI,
 		SUB,		// t0 = t1 - t2
 		SUBI,
+		SUBI_REVERSE,	// t0 = value - t1
 		NEG,		// t0 = - t1
 		MULT,		// t0 = t1 * t2
+		MULTI,		// t0 = t1 * value
 		DIV,		// t0 = t1 / t2
+		DIVI,		// t0 = t1 / value
+		DIVI_REVERSE,	// t0 = value / t1
 		LOAD_IND,	// t0 = t1[t2]
 		STORE_IND,	// t0[t1] = t2
 		ASSIGN,		// t0 = t1
 		ASSIGN_INT,		// t0 = i
 		ASSIGN_CHAR,	// t0 ='c'
 
+		MOD,	// x = x % y
+
 		PUSH,	// push t1
 		CALL,		// t0(nullable) = call t3
 		RET,		// return t1(nullable)
 
 		INPUT,		// scanf(t0)
-		OUTPUT,		// printf(t3(nullable), t1(nullable)) cannot have both entry being null
+		OUTPUT,		// printf(t3(nullable), t1(nullable))
 
 		BGT,		// branch to t3 if t1 > t2
 		BGE,		// branch to t3 if t1 >= t2
 		BLT,		// branch to t3 if t1 < t2
 		BLE,		// branch to t3 if t1 <= t2
-		BEQ,		// branch to t3 if t1 == t2(nullable)
-		BNE,		// branch to t3 if t1 != t2(nullable)
+		BEQ,		// branch to t3 if t1 == t2
+		BNE,		// branch to t3 if t1 != t2
 		BZ,			// branch if t1 == zero
 		BNZ,		// branch if t1 != zero
 		JUMP,		// jump t3
@@ -71,6 +77,7 @@ public:
 	midCode(MidCodeInstr _instr, identifier*, identifier*, int);
 	midCode(MidCodeInstr _instr, std::string _str);
 	midCode(MidCodeInstr _instr, int, std::string _str);
+	midCode(midCode* _mid_code);
 
 	// midCode(MidCodeInstr _instr);
 

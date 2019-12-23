@@ -49,9 +49,10 @@ public:
 	string name;
 	FUNC_TYPE type;
 	FUNC_STATUS status;
-	list<midCode> midCodeList;
+	list<midCode*> midCodeList;
 	identifierTable identifierTable;
 	int pushNum;
+	bool canInline;
 
 private:
 	int paramNum;
@@ -71,7 +72,7 @@ public:
 	void setFuncStatus(string _name, FUNC_STATUS _status);
 	SymbolTable();
 	void midCode_output(ofstream&);
-	list<func> funcTable;
+	list<func*> funcTable;
 	func* _global_function;
 	map<string, string> strToPrint;
 };

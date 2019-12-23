@@ -25,8 +25,12 @@ private:
 	void toMips_addi(midCode*, func*);
 	void toMips_sub(midCode*, func*);
 	void toMips_subi(midCode*, func*);
+	void toMips_subi_reverse(midCode*, func*);
 	void toMips_mult(midCode*, func*);
+	void toMips_multi(midCode*, func*);
 	void toMips_div(midCode*, func*);
+	void toMips_divi(midCode*, func*);
+	void toMips_divi_reverse(midCode*, func*);
 	void toMips_neg(midCode*, func*);
 	void toMips_loadInd(midCode*, func*);
 	void toMips_storeInd(midCode*, func*);

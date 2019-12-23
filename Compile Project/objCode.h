@@ -13,6 +13,7 @@ public:
 		sub, subi,
 		mul, div,
 		lw, sw,
+		mod,
 
 		bgt, bge,
 		blt, ble,
@@ -43,7 +44,7 @@ public:
 	objCode(Instr, Reg, Reg, Reg, int, std::string);
 
 	void output(ofstream&);
-	string reg2string(Reg);
+	static string reg2string(Reg);
 };
 
 string removeSpace(string _str);

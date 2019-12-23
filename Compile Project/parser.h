@@ -32,6 +32,7 @@ private:
 	SymbolTable* func_table;
 	func* current_func;
 	func* _global_func;
+	vector<midCode*> tempMidCodeCollector;
 	
 	void appendEnd(GrammarNode* father);
 	void appendEnd(GrammarNode* father, Symbol token_type);
@@ -53,7 +54,7 @@ private:
 
 	void variableIdentifier(GrammarNode* father, IDENTIFIER_TYPE _type);
 
-	void ifConditionParser(GrammarNode* father, string, bool);
+	midCode* ifConditionParser(GrammarNode* father, string, bool);
 	void ifStatementParser(GrammarNode* father);
 	void loopStatementParser(GrammarNode* father);
 	void assignStatementParser(GrammarNode* father);
@@ -86,7 +87,7 @@ private:
 	func* analyseFunctionParser();
 
 	void printTree(GrammarNode* father);
-	void midCodeAdd(midCode _mid_code);
+	void midCodeAdd(midCode* _mid_code);
 	identifier* getTempVar(IDENTIFIER_TYPE _type);
 	identifier* genTempConst(IDENTIFIER_TYPE _type, int value);
 };

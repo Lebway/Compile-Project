@@ -32,14 +32,19 @@ class identifier
 public:
 	identifier();
 	identifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, int _value, IDENTIFIER_LOCATION _loc);
+	identifier(const identifier*);
 	string name;
 	IDENTIFIER_KIND kind;
 	IDENTIFIER_TYPE type;
 	IDENTIFIER_LOCATION location;
 	void setOffset(int);
-	int value;
+	void setValue(int);
+	int getValue();
 	int offset;
 	int array_lenth;
+private:
+	int value;
+	bool have_set_value;
 };
 
 class identifierTable

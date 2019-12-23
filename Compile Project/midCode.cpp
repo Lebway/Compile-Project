@@ -1,4 +1,4 @@
-#include "midCode.h"
+﻿#include "midCode.h"
 #include "parser.h"
 #include <cassert>
 
@@ -9,6 +9,15 @@ midCode::midCode(MidCodeInstr _instr, identifier* t0, identifier* t1, identifier
 	this->t2 = t2;
 	this->label = _str;
 	this->value = _value;
+}
+
+midCode::midCode(midCode* _mid_code) {
+	this->instr = _mid_code->instr;
+	this->t0 = _mid_code->t0;
+	this->t1 = _mid_code->t1;
+	this->t2 = _mid_code->t2;
+	this->label = _mid_code->label;
+	this->value = _mid_code->value;
 }
 
 midCode::midCode(MidCodeInstr _instr, identifier* t0, int _value, string str) {
@@ -76,14 +85,26 @@ void midCode::output(ofstream& output_handler) {
 	case(MidCodeInstr::SUBI):
 		output_handler << t0->name << " = " << t1->name << " - " << value;
 		break;
+	case(MidCodeInstr::SUBI_REVERSE):
+		output_handler << t0->name << " = " << value << " - " << t1->name;
+		break;
 	case(MidCodeInstr::NEG):
 		output_handler << t0->name << " = " << "-" << t1->name;
 		break;
 	case(MidCodeInstr::MULT):
 		output_handler << t0->name << " = " << t1->name << " * " << t2->name;
 		break;
+	case(MidCodeInstr::MULTI):
+		output_handler << t0->name << " = " << t1->name << " * " << value;
+		break;
 	case(MidCodeInstr::DIV):
 		output_handler << t0->name << " = " << t1->name << " / " << t2->name;
+		break;
+	case(MidCodeInstr::DIVI):
+		output_handler << t0->name << " = " << t1->name << " / " << value;
+		break;
+	case(MidCodeInstr::DIVI_REVERSE):
+		output_handler << t0->name << " = " << value << " / " << t1->name;
 		break;
 	case(MidCodeInstr::LOAD_IND):
 		output_handler << t0->name << " = " << t1->name << "[" << t2->name << "]";
@@ -168,6 +189,9 @@ void midCode::output(ofstream& output_handler) {
 		break;
 	case(MidCodeInstr::VAR_CHAR):
 		output_handler << "VAR CHAR " << t0->name;
+		break;
+	case(MidCodeInstr::MOD):
+		output_handler << t0->name << " = " << t1->name << " % " << t2->name;
 		break;
 
 	default:

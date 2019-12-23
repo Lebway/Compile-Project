@@ -1,4 +1,4 @@
-#include "error_handler.h"
+﻿#include "error_handler.h"
 #include "error.h"
 using namespace std;
 
@@ -6,6 +6,11 @@ Error_handler::Error_handler()
 {
 	// TODO: init
 }
+
+int Error_handler::getNum() {
+	return this->errorList.size();
+}
+
 
 void Error_handler::output(string _out_file) {
 	outFile.open(_out_file);

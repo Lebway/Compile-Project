@@ -4,9 +4,11 @@
 #include"error_handler.h"
 #include"error.h"
 #include"symbolTable.h"
-#include"mips.h"
-#include<iostream>
-#include<string>
+#include "mips.h"
+#include "mipsWithReg.h"
+#include "optimize.h"
+#include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -22,12 +24,25 @@ int main()
 	Tokenizer tokenizer(input_file, error_handler);
 	SymbolTable* symbolTable = new SymbolTable();
 	Parser parser(tokenizer.getTokenlist(), error_handler, symbolTable);
-	Mips mips(symbolTable);
-	parser.printWholeTree(output_file);
+	error_handler->output(error_file);
+	if (error_handler->getNum()) return 0;
+	// symbolTable->midCode_optimize();
+	Optimizer optimizer(symbolTable);
+	optimizer.optimize();
+	// Mips mips(symbolTable);
+	MipsWithReg mips(symbolTable);
+	// parser.printWholeTree(output_file);
 	symbolTable->midCode_output(midCode_output);
 	mips.mipsGen();
 	mips.output(mips_output);
-	error_handler->output(error_file);
+	
 
 	return 0;
 }
+
+/*
+	TODO: need to change:
+	+ save the global identifer when call function
+	+ deep copy the branch statement 
+	+ check all and make some test
+*/

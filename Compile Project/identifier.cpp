@@ -1,5 +1,6 @@
 #include "identifier.h"
 #include <cassert>
+#include <iostream>
 
 // Identifier
 identifier::identifier()
@@ -9,6 +10,18 @@ identifier::identifier()
 	this->type = ILLEGAL_TYPE;
 	this->value = -1;
 	this->location = ERROR_LOCATION;
+	this->have_set_value = false;
+}
+
+identifier::identifier(const identifier* _id) {
+	this->name = string(_id->name);
+	this->kind = _id->kind;
+	this->type = _id->type;
+	this->location = _id->location;
+	this->array_lenth = _id->array_lenth;
+	this->value = _id->value;
+	this->have_set_value = _id->have_set_value;
+	this->offset = _id->offset;
 }
 
 identifier::identifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _type, int _value, IDENTIFIER_LOCATION _loc)
@@ -18,10 +31,24 @@ identifier::identifier(string _name, IDENTIFIER_KIND _kind, IDENTIFIER_TYPE _typ
 	this->type = _type;
 	this->value = _value;
 	this->location = _loc;
+	this->have_set_value = false;
 }
 
 void identifier::setOffset(int _offset) {
 	this->offset = _offset;
+}
+
+void identifier::setValue(int _value) {
+	if (!this->have_set_value) {
+		this->have_set_value = true;
+		this->value = _value;
+	} else {
+		cout << "[DEBUG] try to assign to const (which have already set value)" << endl;
+	}
+}
+
+int identifier::getValue() {
+	return this->value;
 }
 
 // Identifier Table

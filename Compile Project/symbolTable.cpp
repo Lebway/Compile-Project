@@ -1,4 +1,4 @@
-#include "symbolTable.h"
+﻿#include "symbolTable.h"
 #include "identifier.h"
 #include <cassert>
 
@@ -10,6 +10,7 @@ func::func() {
 	this->type = ILLEGAL_FUNC;
 	this->paramNum = 0;
 	this->pushNum = 0;
+	this->canInline = true;
 }
 
 func::func(string _name, FUNC_TYPE _type) {
@@ -18,6 +19,7 @@ func::func(string _name, FUNC_TYPE _type) {
 	this->status = NON_RETURN;
 	this->paramNum = 0;
 	this->pushNum = 0;
+	this->canInline = true;
 }
 
 void func::setStatus(FUNC_STATUS _status) {
@@ -61,7 +63,6 @@ identifier* func::genTempConst(IDENTIFIER_TYPE _type, const int _value, IDENTIFI
 
 identifier* func::genTempVar(IDENTIFIER_TYPE _type, IDENTIFIER_LOCATION _loc) {
 	static int counter = 1;
-	int index;
 	return this->addIdentifier("#"+to_string(counter++), VAR_IDENTIFIER, _type, 0, _loc);
 }
 
@@ -92,36 +93,35 @@ SymbolTable::SymbolTable() {
 }
 
 void SymbolTable::addFunc(func _func) {
-	// TODO: 同名函数会被忽略!!!
-	funcTable.push_back( _func);
+	funcTable.push_back(& _func);
 }
 
 void SymbolTable::addFunc(string _name, FUNC_TYPE _type) {
-	funcTable.push_back(func(_name, _type));
+	funcTable.push_back(new func(_name, _type));
 }
 
 void SymbolTable::setFuncStatus(string _name, FUNC_STATUS _status) {
-	list<func>::iterator iter;
+	list<func*>::iterator iter;
 	for (iter = this->funcTable.begin(); iter != this->funcTable.end(); iter++) {
-		if ((*iter).name == _name) (*iter).setStatus(_status);
+		if ((*iter)->name == _name) (*iter)->setStatus(_status);
 	}
 }
 
 func* SymbolTable::findFunc(string _name) {
-	list<func>::iterator iter;
+	list<func*>::iterator iter;
 	for (iter = this->funcTable.begin(); iter != this->funcTable.end(); iter++) {
-		if ((*iter).name == _name) return &(*iter);
+		if ((*iter)->name == _name) return (*iter);
 	}
 	return new func();
 }
 
 void SymbolTable::midCode_output(ofstream& output_handler)
 {
-	list<func>::iterator func_iter;
-	list<midCode>::iterator midCode_iter;
+	list<func*>::iterator func_iter;
+	list<midCode*>::iterator midCode_iter;
 	for (func_iter = this->funcTable.begin(); func_iter != this->funcTable.end(); func_iter++) {
-		for (midCode_iter = (*func_iter).midCodeList.begin(); midCode_iter != (*func_iter).midCodeList.end(); midCode_iter++) {
-			(*midCode_iter).output(output_handler);
+		for (midCode_iter = (*func_iter)->midCodeList.begin(); midCode_iter != (*func_iter)->midCodeList.end(); midCode_iter++) {
+			(*midCode_iter)->output(output_handler);
 			output_handler << endl;
 		}
 		output_handler << endl;

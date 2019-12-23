@@ -1,4 +1,4 @@
-#include"grammarNode.h"
+﻿#include"grammarNode.h"
 
 GrammarNode::GrammarNode() {
 	this->node_type = MID_NODE;

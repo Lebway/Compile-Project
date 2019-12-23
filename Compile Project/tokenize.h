@@ -16,7 +16,7 @@ class Tokenizer {
 public:
 	Tokenizer();
 	Tokenizer(string filename, Error_handler* _error_handler);
-	// TODO: 问题，c++的参数引用传递和参数指针传递?
+
 	Token next_token();
 	list<Token> getTokenlist();
 
