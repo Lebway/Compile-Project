@@ -37,7 +37,6 @@ list<midCode*> Optimizer::constFold(list<midCode*> midCodeList) {
 						);
 						continue;
 					}
-					assert(0);
 				}
 			}
 		} else if (instr == midCode::MidCodeInstr::ADD) {
@@ -52,7 +51,6 @@ list<midCode*> Optimizer::constFold(list<midCode*> midCodeList) {
 							(*iter)->t1->getValue() + (*iter)->t2->getValue()));
 					continue;
 				}
-				assert(0);
 			} else if ((*iter)->t1->kind == CONST_IDENTIFIER) {
 				newMidCodeList.push_back(
 					new midCode(midCode::MidCodeInstr::ADDI, (*iter)->t0,
@@ -76,7 +74,6 @@ list<midCode*> Optimizer::constFold(list<midCode*> midCodeList) {
 							(*iter)->t1->getValue() - (*iter)->t2->getValue()));
 					continue;
 				}
-				assert(0);
 			} else if ((*iter)->t1->kind == CONST_IDENTIFIER) {		// sub t0 const a -> li $k1 const sub t0 k1 a
 				newMidCodeList.push_back(
 					new midCode(midCode::MidCodeInstr::SUBI_REVERSE, (*iter)->t0,
@@ -100,7 +97,6 @@ list<midCode*> Optimizer::constFold(list<midCode*> midCodeList) {
 							- 1 * (*iter)->t1->getValue()));
 					continue;
 				}
-				assert(0);
 			}
 		} else if (instr == midCode::MidCodeInstr::MULT) {
 			if ((*iter)->t1->kind == CONST_IDENTIFIER && (*iter)->t2->kind == CONST_IDENTIFIER) {
@@ -114,7 +110,6 @@ list<midCode*> Optimizer::constFold(list<midCode*> midCodeList) {
 							(*iter)->t1->getValue() * (*iter)->t2->getValue()));
 					continue;
 				}
-				assert(0);
 			} else if ((*iter)->t1->kind == CONST_IDENTIFIER) {
 				newMidCodeList.push_back(
 					new midCode(midCode::MidCodeInstr::MULTI, (*iter)->t0, (*iter)->t2, (*iter)->t1->getValue())
@@ -138,7 +133,7 @@ list<midCode*> Optimizer::constFold(list<midCode*> midCodeList) {
 							(*iter)->t1->getValue() / (*iter)->t2->getValue())
 					);
 					continue;
-				} assert(0);
+				}
 			} else if ((*iter)->t1->kind == CONST_IDENTIFIER) {
 				newMidCodeList.push_back(new midCode(midCode::MidCodeInstr::DIVI_REVERSE,
 					(*iter)->t0, (*iter)->t2, (*iter)->t1->getValue()));

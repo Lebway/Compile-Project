@@ -64,21 +64,24 @@ Reg registerPool::findReg(identifier* _id) {
 }
 
 // clean the '#' var which used 2 twice
-/*
+
 void registerPool::relaxDIVtemp() {
-	for (Reg reg : tempRegPool) {
+	for(Reg reg	: tempLRU) {
 		if (recordMap[reg]->alloced) 
 			if (recordMap[reg]->id->name[0] == '#' && recordMap[reg]->read >= 1) {
-				assert(recordMap[reg]->read == 1);
+				// assert(recordMap[reg]->read == 1);
 				recordMap[reg]->clear();
+				cout << "[DEBUG] we relax 1 reg" << endl;
+				return;
 			}
 	}
 }
-*/
+
 
 // the reg we return is a empty one
 Reg registerPool::allocTempReg() {
-	// relax
+
+
 	for (Reg reg : tempRegPool) {
 		if (!recordMap[reg]->alloced) {
 			tempLRU.remove(reg);
@@ -86,6 +89,18 @@ Reg registerPool::allocTempReg() {
 			return reg;
 		}
 	}
+	
+	// relax
+	// relaxDIVtemp();
+
+	for (Reg reg : tempRegPool) {
+		if (!recordMap[reg]->alloced) {
+			tempLRU.remove(reg);
+			tempLRU.push_back(reg);
+			return reg;
+		}
+	}
+
 	cout << "[DEBUG] Can not find a empty reg!" << endl;
 	// cannot find a empty reg
 	Reg lastUsedReg = tempLRU.front();
@@ -220,6 +235,7 @@ void registerPool::countReference(vector<BasicBlock*>* _blocks, func* _func) {
 	for (Reg reg : globRegPool) {
 		if (index == vec.size()) break;
 		identifier* tmpId = vec[index].first;
+		// we don't give reg to the global variable
 		if (tmpId->location != GLOBAL_LOCATION && tmpId->kind != CONST_IDENTIFIER) {
 			accrossVarMap[tmpId] = reg;
 			cout << "count: " << vec[index].second << " id: " << tmpId->name << endl;
@@ -233,7 +249,7 @@ void registerPool::countReference(vector<BasicBlock*>* _blocks, func* _func) {
 		}
 		index++;
 	}
-	cout << "====== end ======" << endl;
+	// cout << "====== end ======" << endl;
 	set<Reg> newGlobRegPool;
 	int releaseNum = 0;
 	for (Reg reg : globRegPool) {

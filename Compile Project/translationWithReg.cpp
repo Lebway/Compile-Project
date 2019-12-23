@@ -688,6 +688,8 @@ void MipsWithReg::deadDefOptimize() {
 					}
 					break;		
 				case(midCode::MidCodeInstr::ASSIGN):
+				case(midCode::MidCodeInstr::ASSIGN_INT):
+				case(midCode::MidCodeInstr::ASSIGN_CHAR):
 					if (useSet.count((*midCodeIter)->t0) == 0 && 
 						(*midCodeIter)->t0->location != GLOBAL_LOCATION) {
 
@@ -768,6 +770,8 @@ void MipsWithReg::assignOptimize() {
 					else if (changeSource == changeTarget) canChange = false;
 					else if (changeSource->kind != changeTarget->kind) canChange = false;
 					else if (changeSource->type != changeTarget->type) canChange = false;
+					else if (changeTarget->location == GLOBAL_LOCATION) canChange = false;
+					else if (changeSource->location == GLOBAL_LOCATION) canChange = false;
 					else {
 						auto tempIter = midCodeIter;
 						tempIter++;

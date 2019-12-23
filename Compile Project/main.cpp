@@ -1,4 +1,4 @@
-#include"test.h"
+﻿#include"test.h"
 #include"parser.h"
 #include"tokenize.h"
 #include"error_handler.h"
@@ -41,8 +41,12 @@ int main()
 }
 
 /*
-	TODO: need to change:
-	+ save the global identifer when call function
-	+ deep copy the branch statement 
-	+ check all and make some test
+Check List:
+	+ temp寄存器不写回策略
+	+ 找可用的临时寄存器的时候，先进行松弛
+	+ 循环改写可能导致const fold出错！因为temp 用了两边
+	+ peephole adjace assign中58行可以不需要
+	+ inline目前有size限制，可以解除
+	+ 块的划分中，函数调用CALL可以不用划分
+	+ 目前全局变量不分配全局寄存器，可以为全局变量分配全局寄存器
 */

@@ -28,8 +28,12 @@ void FlowChart::livenessAnalysis() {
 	bool update;
 	do {
 		update = false;
-		for (BasicBlock* block : blocks) {
-			// out[B] = U{in[P}}
+		int index = blocks.size() - 1;
+		for (; index >= 0; index--) {
+			BasicBlock* block = blocks[index];
+
+			// for (BasicBlock* block : blocks) {
+				// out[B] = U{in[P}}
 			for (BasicBlock* son_block : block->nextBlocks) {
 				// TODO: if exit block continue
 				block->out.insert(son_block->in.begin(), son_block->in.end());
@@ -45,6 +49,7 @@ void FlowChart::livenessAnalysis() {
 				if (block->in.count(id) == 0) update = true;
 				block->in.insert(id);
 			}
+			// }
 		}
 	} while (update);
 

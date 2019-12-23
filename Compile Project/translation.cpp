@@ -423,7 +423,6 @@ void Mips::toMips_call(midCode* code, func* this_func) {
 
 	// call function ----> jump to the funciton 
 	this->mipsCode.push_back(objCode(objCode::Instr::jal, Reg::zero, Reg::zero, Reg::zero, NOVALUE, code->label));
-	// TODO: 储存寄存器
 
 	toMips_pop_reg(Reg::fp);
 	toMips_pop_reg(Reg::ra);
@@ -570,7 +569,6 @@ void Mips::toMips_push(midCode* code, func* this_func) {
 	// else 
 	// 	toMips_push_reg(Reg::s0);
 	
-	// TODO: 存到FP里面
 	this_func->pushNum++;
 	this->mipsCode.push_back(objCode(objCode::Instr::sw, Reg::s0, Reg::fp, Reg::zero, this_func->pushNum * 4 + this_func->getOffsetSum(), ""));
 	// sw $ra, 0($sp)

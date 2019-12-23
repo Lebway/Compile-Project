@@ -25,8 +25,6 @@ regRecord::regRecord(Reg _reg) {
 
 // get a reg and set the id&func, notice: need lw to the reg
 void regRecord::occupy(identifier* _id, func* _func) {
-	// if (this->alloced) this->release();
-	
 	this->alloced = true;
 	this->dirty = false;
 	this->write = 0;
@@ -42,6 +40,7 @@ void regRecord::release(list<objCode>* _mips_code) {
 		if (this->id->name[0] == '#' && read >= 1) {
 			assert(read == 1);
 			write_back = false;
+			cout << "[DEBUG] we don't write back 1 reg" << endl;
 		} else 
 	*/
 	

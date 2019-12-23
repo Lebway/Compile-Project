@@ -89,8 +89,8 @@ void BasicBlock::setDefUse() {
 			break;
 		// array
 		case(midCode::MidCodeInstr::LOAD_IND):
-			checkDef(mid_code->t0);
 			checkUse(mid_code->t2);	// TODO: we don't need to check the array
+			checkDef(mid_code->t0);
 			break;
 		case(midCode::MidCodeInstr::STORE_IND):
 			checkUse(mid_code->t2);
